@@ -3,9 +3,9 @@
 
  AutoIt Version: 3.3.14.5 + put file SciTEUser.properties in your UserProfile e.g. C:\Users\User-10
 
- Author:        WIMB  -  Nov 18, 2019
+ Author:        WIMB  -  June 08, 2020
 
- Program:       VHD_WIMBOOT_x64.exe - Version 2.8 in rule 155
+ Program:       VHD_WIMBOOT_x86.exe - Version 2.9 in rule 157
 
  Script Function:
 
@@ -59,15 +59,17 @@ Global $WIM_FileSelect, $WIM_File, $WIM_Size_Label, $VHD_File, $VHD_FileSelect, 
 Global $TargetSel, $Target, $TargetSize, $TargetFree,  $WinDrv, $WinDrvSel, $WinDrvSize, $WinDrvFree
 ; Setting Other variables
 Global $wimfile="", $WIM_Size=0, $vhdfile="", $VHDSize=0, $wimfolder = "", $vhdfolder = "", $VHDSpaceAvail=0, $VHD_Overflow=0
-Global $TargetDrive="", $TargetSpaceAvail=0, $FSvar_TargetDrive="", $DriveType="Fixed", $usbfix=0, $Firmware = "UEFI", $PartStyle = "MBR"
-Global $WinDrvDrive="", $WinDrvSpaceAvail=0, $FSvar_WinDrvDrive="", $sys_disk="0", $sys_part="", $usbsys=0, $DriveSysType="Fixed", $WIM_Path = ""
+Global $TargetDrive="", $TargetSpaceAvail=0, $FSvar_TargetDrive="", $DriveType="Fixed", $Firmware = "UEFI", $PartStyle = "MBR"
+Global $WinDrvDrive="", $WinDrvSpaceAvail=0, $FSvar_WinDrvDrive="", $DriveSysType="Fixed", $WIM_Path = ""
+
+Global $inst_disk="", $inst_part="", $sys_disk="", $sys_part="", $usbsys=0, $usbfix=0
 
 Global $driver_flag=0, $vhdmp=0, $SysWOW64=0, $WinFol="\Windows", $winload_flag=0, $PE_flag = 0
 Global $bcdedit="", $winload = "winload.exe", $bcd_guid_outfile = "makebt\bs_temp\bcd_boot_vhd.txt", $store = "", $DistLang = "en-US", $WinLang = "en-US", $bcdboot_flag = 0
 Global $tmpdrive = "", $PSize = "1.5 GB", $vhd_size="1500", $vhd_name = "W10x64_US_", $vhdfile_name ="W10x64_US_X.vhd", $vhdfile_name_only = ""
 
-Global $str = "", $bt_files[10] = ["\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Linux.lst", "\makebt\grldr.mbr", "\makebt\listusbdrives\ListUsbDrives.exe", _
-"\makebt\WimBootCompress.ini", "\wimlib_x64\wimlib-imagex.exe", "\wimlib_x64\wiminfo.cmd", "\wimlib_x86\wimlib-imagex.exe", "\wimlib_x86\wiminfo.cmd"]
+Global $str = "", $bt_files[12] = ["\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Linux.lst", "\makebt\menu_Win_ISO.lst", "\makebt\grldr.mbr", "\makebt\listusbdrives\ListUsbDrives.exe", _
+"\makebt\WimBootCompress.ini", "\wimlib_x64\wimlib-imagex.exe", "\wimlib_x64\wiminfo.cmd", "\wimlib_x86\wimlib-imagex.exe", "\wimlib_x86\wiminfo.cmd", "\makebt\grub.exe"]
 
 Global $config_file_wimboot=@ScriptDir & "\makebt\WimBootCompress.ini"
 
@@ -149,10 +151,10 @@ EndIf
 SystemFileRedirect("Off")
 
 ; Creating GUI and controls
-$hGuiParent = GUICreate(" VHD_WIMBOOT - APPLY WIM to VHD file ", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
+$hGuiParent = GUICreate(" VHD_WIMBOOT x86 - APPLY WIM to VHD file ", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
-GUICtrlCreateGroup("System Files - Prog x64 Version 2.8 ", 18, 10, 364, 235)
+GUICtrlCreateGroup("System Files - Version 2.9  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 235)
 
 GUICtrlCreateLabel( "  WIM File", 32, 29)
 $WIM_Size_Label = GUICtrlCreateLabel( "", 130, 29, 60, 15, $ES_READONLY)
@@ -174,7 +176,8 @@ GUICtrlSetTip($APPLY, " Apply WIM Image File to VHD File ")
 
 $CAPTURE = GUICtrlCreateButton("CAPTURE", 285, 83, 70, 30)
 GUICtrlSetOnEvent($CAPTURE, "_CAPTURE_VHD_ToWIM")
-GUICtrlSetTip($CAPTURE, " Capture WIM Image File from VHD File ")
+GUICtrlSetTip($CAPTURE, " Capture WIM Image File from VHD File " & @CRLF _
+& " Switch Windows Defender Off for Faster Capture ")
 
 $WIM_INFO = GUICtrlCreateButton("WIM Info", 32, 80, 70, 27)
 GUICtrlSetOnEvent($WIM_INFO, "_WIM_INFO")
@@ -501,15 +504,15 @@ Func _Update_WIMBOOT()
 			RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
 			If $val = 0 Then
 				MsgBox(0, "Update-WIMBootEntry - OK ", " Data Source ID = " & $index_found & @CRLF & @CRLF & " WIM File = " & $wimfile & @CRLF & @CRLF _
-				& " VHD File = " & $vhdfile & @CRLF & @CRLF & " Old WIMBootEntry = " & $wim_found & @CRLF & @CRLF & " Return Code = " & $val , 0)
+				& " VHD File = " & $vhdfile & @CRLF & @CRLF & " Old WIMBootEntry = " & $wim_found & @CRLF & @CRLF & " WimBoot Update OK - Return Code = " & $val , 0)
 			Else
 				MsgBox(48, "Update-WIMBootEntry - Failed ", " Data Source ID = " & $index_found & @CRLF & @CRLF & " WIM File = " & $wimfile & @CRLF & @CRLF _
-				& " VHD File = " & $vhdfile & @CRLF & @CRLF & " Old WIMBootEntry = " & $wim_found & @CRLF & @CRLF & " Return Code = " & $val , 0)
+				& " VHD File = " & $vhdfile & @CRLF & @CRLF & " Old WIMBootEntry = " & $wim_found & @CRLF & @CRLF & " WimBoot Update Failed - Return Code = " & $val , 0)
 			EndIf
 		Else
 			$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
 			MsgBox(48, "Update-WIMBootEntry - Failed ", " Data Source ID = " & $index_found & @CRLF & @CRLF & " WIM File = " & $wimfile & @CRLF & @CRLF _
-			& " VHD File = " & $vhdfile & @CRLF & @CRLF & " WIMBootEntry Not Found", 0)
+			& " VHD File = " & $vhdfile & @CRLF & @CRLF & " No Update - WIMBootEntry Not Found", 0)
 		EndIf
 
 		SystemFileRedirect("Off")
@@ -709,7 +712,7 @@ Func _WinAPI_GetFirmwareEnvironmentVariable()
         Case 998
             Return "UEFI"
         Case Else
-            Return "UNKNOWN"
+            Return "UEFI"
     EndSwitch
 EndFunc   ;==>_WinAPI_GetFirmwareEnvironmentVariable
 ;===================================================================================================
@@ -1123,7 +1126,7 @@ Func _target_drive()
 	Local $TargetSelect, $Tdrive, $FSvar, $valid = 0, $ValidDrives, $RemDrives
 	Local $NoDrive[3] = ["A:", "B:", "X:"], $FileSys[2] = ["NTFS", "FAT32"]
 
-	Local $pos, $fs_ok=0
+	Local $pos, $fs_ok=0, $ikey
 
 	DisableMenus(1)
 	$ValidDrives = DriveGetDrive( "FIXED" )
@@ -1226,6 +1229,21 @@ Func _target_drive()
 
 	If $valid Then
 		$TargetDrive = $Tdrive
+
+		_ListUsbDrives()
+
+		If $usbfix = 0 Then
+			$ikey = MsgBox(48+4+256, "WARNING - Boot Drive is NOT USB", "Boot Drive is NOT USB Drive" & @CRLF & @CRLF & _
+			"Target Boot Drive = " & $TargetDrive & "   HDD = " & $inst_disk & "   PART = " & $inst_part & @CRLF & @CRLF _
+			& "Modify the Booting of your Computer ? " & @CRLF & @CRLF _
+			& "Are You Sure ? - This is an Internal Harddisk ! ")
+			If $ikey <> 6 Then
+				$TargetDrive = ""
+				DisableMenus(0)
+				Return
+			EndIf
+		EndIf
+
 		GUICtrlSetData($Target, $TargetDrive)
 		$DriveType=DriveGetType($TargetDrive)
 		$TargetSpaceAvail = Round(DriveSpaceFree($TargetDrive))
@@ -2331,21 +2349,10 @@ Func _BCD_BootDrive_VHD_Entry()
 
 EndFunc ;==>  _BCD_BootDrive_VHD_Entry
 ;===================================================================================================
-Func _Boot_Entries()
-	Local $i=0, $d
-
+Func _ListUsbDrives()
 	Local $linesplit[20], $file, $line, $pos1, $pos2
 
-	Local $val=0, $valid = 0, $guid, $entry_image_file=""
-
-	Local $inst_disk="", $inst_part="", $mptarget=0, $mpsystem=0, $count = 0
-
-	; Make Boot Manager entry and Grub4dos entries on TargetDrive
-
-	; GUICtrlSetData($ProgressAll, 20)
-	; _GUICtrlStatusBar_SetText($hStatus," List USB Drives - wait ...", 0)
-
-	$DriveType=DriveGetType($TargetDrive)
+	Local $mptarget=0, $mpsystem=0, $count = 0
 
 	If FileExists(@ScriptDir & "\makebt\wim_info\usblist.txt") Then
 		FileCopy(@ScriptDir & "\makebt\wim_info\usblist.txt", @ScriptDir & "\makebt\wim_info\usblist_bak.txt", 1)
@@ -2354,6 +2361,10 @@ Func _Boot_Entries()
 
 	RunWait(@ComSpec & " /c makebt\listusbdrives\ListUsbDrives.exe -a > makebt\wim_info\usblist.txt", @ScriptDir, @SW_HIDE)
 
+	$inst_disk=""
+	$inst_part=""
+	$sys_disk=""
+	$sys_part=""
 	$usbfix=0
 	$usbsys=0
 	$file = FileOpen(@ScriptDir & "\makebt\wim_info\usblist.txt", 0)
@@ -2426,6 +2437,24 @@ Func _Boot_Entries()
 		FileClose($file)
 	EndIf
 
+EndFunc ;==>  _ListUsbDrives
+;===================================================================================================
+Func _Boot_Entries()
+	Local $i=0, $d
+
+	Local $file, $line, $pos1, $pos2
+
+	Local $val=0, $valid = 0, $guid, $entry_image_file=""
+
+	; Make Boot Manager entry and Grub4dos entries on TargetDrive
+
+	; GUICtrlSetData($ProgressAll, 20)
+	; _GUICtrlStatusBar_SetText($hStatus," List USB Drives - wait ...", 0)
+
+	$DriveType=DriveGetType($TargetDrive)
+
+	_ListUsbDrives()
+
 	; Set Active TargetDrive only for USB Fixed Disk with MBR Partition - BIOS mode booting requires Active Drive
 	If $usbfix And $DriveType <> "Removable" And $inst_disk <> "" And $inst_part <> "" And $PartStyle = "MBR" Then
 		; MsgBox(0, "MBR Disk and Partition", " Disk = " & $inst_disk & @CRLF & " Part = " & $inst_part, 3)
@@ -2444,14 +2473,21 @@ Func _Boot_Entries()
 
 	GUICtrlSetData($ProgressAll, 65)
 
-	; Grub4dos Menu entry in case of SVBus driver and VHD - Grub4dos does Not work with VHDX
-	If $driver_flag = 3 And StringRight($vhdfile_name, 4) = ".vhd" And $PartStyle = "MBR" Then
-		_GUICtrlStatusBar_SetText($hStatus," Making Grub4dos Menu on Target Boot Drive " & $TargetDrive, 0)
-		If Not FileExists($TargetDrive & "\grldr") Then	FileCopy(@ScriptDir & "\makebt\grldr", $TargetDrive & "\", 1)
+	If $PartStyle = "MBR" Then
+		If Not FileExists($TargetDrive & "\grldr") Then
+			FileCopy(@ScriptDir & "\makebt\grldr", $TargetDrive & "\", 1)
+			FileCopy(@ScriptDir & "\makebt\grub.exe", $TargetDrive & "\", 1)
+		EndIf
 		If Not FileExists($TargetDrive & "\menu.lst") Then
 			FileCopy(@ScriptDir & "\makebt\menu.lst", $TargetDrive & "\", 1)
 			FileCopy(@ScriptDir & "\makebt\menu_Linux.lst", $TargetDrive & "\", 1)
+			FileCopy(@ScriptDir & "\makebt\menu_Win_ISO.lst", $TargetDrive & "\", 1)
 		EndIf
+	EndIf
+
+	; Grub4dos Menu entry in case of SVBus driver and VHD - Grub4dos does Not work with VHDX
+	If $driver_flag = 3 And StringRight($vhdfile_name, 4) = ".vhd" And $PartStyle = "MBR" Then
+		_GUICtrlStatusBar_SetText($hStatus," Making Grub4dos Menu on Target Boot Drive " & $TargetDrive, 0)
 		If $vhdfolder = "" Then
 			$entry_image_file= $vhdfile_name
 		Else
@@ -2506,27 +2542,60 @@ Func _Boot_Entries()
 	Sleep(2000)
 
 	; in Win 8/10 x64 OS then bcdboot with option /f ALL must be used, otherwise entry is not made
-	If FileExists(@WindowsDir & "\system32\bcdboot.exe") And Not FileExists($TargetDrive & "\Boot\BCD") And $PartStyle = "MBR" Then
-		$bcdboot_flag = 1
-		If $PE_flag = 1 Then
-			If @OSVersion = "WIN_10" Or @OSVersion = "WIN_81" Or @OSVersion = "WIN_8" And @OSArch <> "X86" Then
-				_GUICtrlStatusBar_SetText($hStatus," UEFI x64 OS - Add VHD to BCD on Boot Drive " & $TargetDrive, 0)
-				$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdboot.exe " & $tmpdrive & $WinFol & " /l " & $DistLang & " /s " & $TargetDrive & " /f ALL", @ScriptDir, @SW_HIDE)
+	; Create Windows BootManager Menu on USB if BCD Not exist
+	If $DriveType="Removable" Or $usbfix Then
+		If FileExists(@WindowsDir & "\system32\bcdboot.exe") And Not FileExists($TargetDrive & "\Boot\BCD") And $PartStyle = "MBR" Then
+			$bcdboot_flag = 1
+			If $PE_flag = 1 Then
+				If @OSVersion = "WIN_10" Or @OSVersion = "WIN_81" Or @OSVersion = "WIN_8" And @OSArch <> "X86" Then
+					_GUICtrlStatusBar_SetText($hStatus," UEFI x64 OS - Add VHD to BCD on Boot Drive " & $TargetDrive, 0)
+					$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdboot.exe " & $tmpdrive & $WinFol & " /l " & $DistLang & " /s " & $TargetDrive & " /f ALL", @ScriptDir, @SW_HIDE)
+				Else
+					_GUICtrlStatusBar_SetText($hStatus," Add VHD to BCD on Boot Drive " & $TargetDrive, 0)
+					$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdboot.exe " & $tmpdrive & $WinFol & " /l " & $DistLang & " /s " & $TargetDrive, @ScriptDir, @SW_HIDE)
+				EndIf
 			Else
-				_GUICtrlStatusBar_SetText($hStatus," Add VHD to BCD on Boot Drive " & $TargetDrive, 0)
-				$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdboot.exe " & $tmpdrive & $WinFol & " /l " & $DistLang & " /s " & $TargetDrive, @ScriptDir, @SW_HIDE)
+				If @OSVersion = "WIN_10" Or @OSVersion = "WIN_81" Or @OSVersion = "WIN_8" And @OSArch <> "X86" Then
+					_GUICtrlStatusBar_SetText($hStatus," UEFI x64 OS - Add VHD to BCD on Boot Drive " & $TargetDrive, 0)
+					$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdboot.exe " & @WindowsDir & " /l " & $WinLang & " /s " & $TargetDrive & " /f ALL", @ScriptDir, @SW_HIDE)
+				Else
+					_GUICtrlStatusBar_SetText($hStatus," Add VHD to BCD on Boot Drive " & $TargetDrive, 0)
+					$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdboot.exe " & @WindowsDir & " /l " & $WinLang & " /s " & $TargetDrive, @ScriptDir, @SW_HIDE)
+				EndIf
 			EndIf
-		Else
-			If @OSVersion = "WIN_10" Or @OSVersion = "WIN_81" Or @OSVersion = "WIN_8" And @OSArch <> "X86" Then
-				_GUICtrlStatusBar_SetText($hStatus," UEFI x64 OS - Add VHD to BCD on Boot Drive " & $TargetDrive, 0)
-				$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdboot.exe " & @WindowsDir & " /l " & $WinLang & " /s " & $TargetDrive & " /f ALL", @ScriptDir, @SW_HIDE)
-			Else
-				_GUICtrlStatusBar_SetText($hStatus," Add VHD to BCD on Boot Drive " & $TargetDrive, 0)
-				$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdboot.exe " & @WindowsDir & " /l " & $WinLang & " /s " & $TargetDrive, @ScriptDir, @SW_HIDE)
+			sleep(2000)
+		EndIf
+	Else
+		If FileExists(@WindowsDir & "\system32\bcdedit.exe") And $PartStyle = "MBR" Then
+			$bcdedit = @WindowsDir & "\system32\bcdedit.exe"
+
+			If Not FileExists($TargetDrive & "\Boot\BCD") And FileExists(@WindowsDir & "\Boot") Then
+				DirCopy(@WindowsDir & "\Boot\PCAT", $TargetDrive & "\Boot", 1)
+				DirCopy(@WindowsDir & "\Boot\Fonts", $TargetDrive & "\Boot\Fonts", 1)
+				DirCopy(@WindowsDir & "\Boot\Resources", $TargetDrive & "\Boot\Resources", 1)
+				If Not FileExists($TargetDrive & "\Boot\boot.sdi") And FileExists(@WindowsDir & "\Boot\DVD\PCAT\boot.sdi") Then
+					FileCopy(@WindowsDir & "\Boot\DVD\PCAT\boot.sdi", $TargetDrive & "\Boot\", 1)
+				EndIf
+				FileMove($TargetDrive & "\Boot\bootmgr", $TargetDrive & "\bootmgr", 1)
+				FileMove($TargetDrive & "\Boot\bootnxt", $TargetDrive & "\BOOTNXT", 1)
+
+				$store = $TargetDrive & "\Boot\BCD"
+				RunWait(@ComSpec & " /c " & $bcdedit & " /createstore " & $store, $TargetDrive & "\", @SW_HIDE)
+				sleep(1000)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /create {bootmgr}", $TargetDrive & "\", @SW_HIDE)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} description " & '"' & "Windows Boot Manager" & '"', $TargetDrive & "\", @SW_HIDE)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} device boot", $TargetDrive & "\", @SW_HIDE)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} inherit {globalsettings}", $TargetDrive & "\", @SW_HIDE)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} timeout 20", $TargetDrive & "\", @SW_HIDE)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} toolsdisplayorder {memdiag}", $TargetDrive & "\", @SW_HIDE)
+
+				_mem_boot_menu()
+
+				$bcdboot_flag = 1
 			EndIf
 		EndIf
-		sleep(2000)
 	EndIf
+
 	If FileExists(@WindowsDir & "\system32\bcdboot.exe") And Not FileExists($TargetDrive & "\efi\Microsoft\Boot\BCD") And $PartStyle = "GPT" Then
 		$bcdboot_flag = 1
 		If $PE_flag = 1 Then
@@ -2575,14 +2644,14 @@ Func _Boot_Entries()
 	EndIf
 
 	; Make Grub4dos entry in BootManager Menu
-	If $driver_flag = 3  And FileExists(@WindowsDir & "\system32\bcdedit.exe") And FileExists($TargetDrive & "\Boot\BCD") And Not FileExists($TargetDrive & "\grldr.mbr") Then
+	If FileExists(@WindowsDir & "\system32\bcdedit.exe") And FileExists($TargetDrive & "\Boot\BCD") And Not FileExists($TargetDrive & "\grldr.mbr") Then
 		; MsgBox(48, "Grub4dos Driver Info ", "  " & @CRLF & @CRLF & " Driver Flag = " & $driver_flag, 0)
 		$bcdedit = @WindowsDir & "\system32\bcdedit.exe"
 
 		FileCopy(@ScriptDir & "\makebt\grldr.mbr", $TargetDrive & "\", 1)
 		$store = $TargetDrive & "\Boot\BCD"
 		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
-		& $store & " /create /d " & '"' & "Start GRUB4DOS" & '"' & " /application bootsector > makebt\bs_temp\bcd_g4d.txt", @ScriptDir, @SW_HIDE)
+		& $store & " /create /d " & '"' & "Grub4dos Menu" & '"' & " /application bootsector > makebt\bs_temp\bcd_g4d.txt", @ScriptDir, @SW_HIDE)
 		$file = FileOpen(@ScriptDir & "\makebt\bs_temp\bcd_g4d.txt", 0)
 		$line = FileReadLine($file)
 		FileClose($file)
@@ -2730,6 +2799,29 @@ Func _Make_Boot()
 		Return
 	EndIf
 EndFunc ;==> _Make_Boot
+;===================================================================================================
+Func _mem_boot_menu()
+
+	$bcdedit = @WindowsDir & "\system32\bcdedit.exe"
+
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /create {memdiag}", @ScriptDir, @SW_HIDE)
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+	& $store & " /set {memdiag} DESCRIPTION " & '"' & "Windows Memory Diagnostic" & '"', $TargetDrive & "\", @SW_HIDE)
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+	& $store & " /set {memdiag} device boot", $TargetDrive & "\", @SW_HIDE)
+	If $store = $TargetDrive & "\Boot\BCD" Then
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set {memdiag} path \Boot\memtest.exe", $TargetDrive & "\", @SW_HIDE)
+	Else
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set {memdiag} path \EFI\Microsoft\Boot\memtest.efi", $TargetDrive & "\", @SW_HIDE)
+	EndIf
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+	& $store & " /set {memdiag} inherit {globalsettings}", $TargetDrive & "\", @SW_HIDE)
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+	& $store & " /set {memdiag} badmemoryaccess Yes", $TargetDrive & "\", @SW_HIDE)
+
+EndFunc   ;==> _win_boot_menu
 ;===================================================================================================
 Func DisableMenus($endis)
 	If $endis = 0 Then
