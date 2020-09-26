@@ -11,7 +11,7 @@
 /**
  * @mainpage
  *
- * This is the documentation for the library interface of wimlib 1.13.1, a C
+ * This is the documentation for the library interface of wimlib 1.13.2, a C
  * library for creating, modifying, extracting, and mounting files in the
  * Windows Imaging (WIM) format.  This documentation is intended for developers
  * only.  If you have installed wimlib and want to know how to use the @b
@@ -411,7 +411,7 @@
 #define WIMLIB_MINOR_VERSION 13
 
 /** Patch version of the library (for example, the 5 in 1.2.5). */
-#define WIMLIB_PATCH_VERSION 1
+#define WIMLIB_PATCH_VERSION 2
 
 #ifdef __cplusplus
 extern "C" {
@@ -2738,7 +2738,7 @@ wimlib_add_tree(WIMStruct *wim, int image,
  * @param wim_ret
  *	On success, a pointer to the new ::WIMStruct is written to the memory
  *	location pointed to by this parameter.  This ::WIMStruct must be freed
- *	using using wimlib_free() when finished with it.
+ *	using wimlib_free() when finished with it.
  *
  * @return 0 on success; a ::wimlib_error_code value on failure.
  *
@@ -3623,8 +3623,8 @@ wimlib_mount_image(WIMStruct *wim,
  * @param wim_ret
  *	On success, a pointer to a new ::WIMStruct backed by the specified
  *	on-disk WIM file is written to the memory location pointed to by this
- *	parameter.  This ::WIMStruct must be freed using using wimlib_free()
- *	when finished with it.
+ *	parameter.  This ::WIMStruct must be freed using wimlib_free() when
+ *	finished with it.
  *
  * @return 0 on success; a ::wimlib_error_code value on failure.
  *
