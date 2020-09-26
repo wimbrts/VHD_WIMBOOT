@@ -3,9 +3,9 @@
 
  AutoIt Version: 3.3.14.5 + put file SciTEUser.properties in your UserProfile e.g. C:\Users\User-10
 
- Author:        WIMB  -  June 08, 2020
+ Author:        WIMB  -  September 21, 2020
 
- Program:       VHD_WIMBOOT_x86.exe - Version 2.9 in rule 157
+ Program:       VHD_WIMBOOT_x86.exe - Version 3.3 in rule 158
 
  Script Function:
 
@@ -53,8 +53,8 @@ Opt("GuiOnEventMode", 1)
 Opt("TrayIconHide", 1)
 
 ; Declaration GUI variables
-Global $hGuiParent, $ProgressAll, $hStatus, $EXIT, $DISK_TYPE, $WIMBOOT
-Global $APPLY, $CAPTURE, $WIM_INFO, $VHD_INFO, $Update_WIMBOOT, $Make_Boot, $LZX, $VHD_TYPE, $VHDX, $ComboSize, $wimlib_dism
+Global $hGuiParent, $ProgressAll, $hStatus, $EXIT, $DISK_TYPE, $Combo_Apply_Mode, $Combo_Capture_Mode
+Global $APPLY, $CAPTURE, $WIM_INFO, $VHD_INFO, $Update_WIMBOOT, $Make_Boot, $VHD_TYPE, $VHDX, $ComboSize, $wimlib_dism
 Global $WIM_FileSelect, $WIM_File, $WIM_Size_Label, $VHD_File, $VHD_FileSelect, $VHD_Size_Label
 Global $TargetSel, $Target, $TargetSize, $TargetFree,  $WinDrv, $WinDrvSel, $WinDrvSize, $WinDrvFree
 ; Setting Other variables
@@ -68,10 +68,11 @@ Global $driver_flag=0, $vhdmp=0, $SysWOW64=0, $WinFol="\Windows", $winload_flag=
 Global $bcdedit="", $winload = "winload.exe", $bcd_guid_outfile = "makebt\bs_temp\bcd_boot_vhd.txt", $store = "", $DistLang = "en-US", $WinLang = "en-US", $bcdboot_flag = 0
 Global $tmpdrive = "", $PSize = "1.5 GB", $vhd_size="1500", $vhd_name = "W10x64_US_", $vhdfile_name ="W10x64_US_X.vhd", $vhdfile_name_only = ""
 
-Global $str = "", $bt_files[12] = ["\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Linux.lst", "\makebt\menu_Win_ISO.lst", "\makebt\grldr.mbr", "\makebt\listusbdrives\ListUsbDrives.exe", _
-"\makebt\WimBootCompress.ini", "\wimlib_x64\wimlib-imagex.exe", "\wimlib_x64\wiminfo.cmd", "\wimlib_x86\wimlib-imagex.exe", "\wimlib_x86\wiminfo.cmd", "\makebt\grub.exe"]
+Global $str = "", $bt_files[13] = ["\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Linux.lst", "\makebt\menu_Win_ISO.lst", "\makebt\grldr.mbr", "\makebt\listusbdrives\ListUsbDrives.exe", _
+"\makebt\WimBootCompress.ini", "\makebt\WimBootCompress-Normal.ini", "\wimlib_x64\wimlib-imagex.exe", "\wimlib_x64\wiminfo.cmd", "\wimlib_x86\wimlib-imagex.exe", "\wimlib_x86\wiminfo.cmd", "\makebt\grub.exe"]
 
 Global $config_file_wimboot=@ScriptDir & "\makebt\WimBootCompress.ini"
+Global $config_file_normal=@ScriptDir & "\makebt\WimBootCompress-Normal.ini"
 
 Global $OS_drive = StringLeft(@WindowsDir, 2), $ProgDrive = StringLeft(@ScriptDir, 2)
 
@@ -151,10 +152,10 @@ EndIf
 SystemFileRedirect("Off")
 
 ; Creating GUI and controls
-$hGuiParent = GUICreate(" VHD_WIMBOOT x86 - APPLY WIM to VHD file ", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
+$hGuiParent = GUICreate(" VHD_WIMBOOT x86 - APPLY WIM to VHD file - wimlib", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
-GUICtrlCreateGroup("System Files - Version 2.9  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 235)
+GUICtrlCreateGroup("System Files - Version 3.3  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 235)
 
 GUICtrlCreateLabel( "  WIM File", 32, 29)
 $WIM_Size_Label = GUICtrlCreateLabel( "", 130, 29, 60, 15, $ES_READONLY)
@@ -170,34 +171,39 @@ $VHD_FileSelect = GUICtrlCreateButton("...", 223, 175, 26, 18)
 GUICtrlSetTip($VHD_FileSelect, " Select VHD File for Capture or Apply of WIM File ")
 GUICtrlSetOnEvent($VHD_FileSelect, "_vhd_fsel")
 
-$APPLY = GUICtrlCreateButton("APPLY", 285, 40, 70, 30)
+$APPLY = GUICtrlCreateButton("APPLY", 32, 80, 70, 27)
 GUICtrlSetOnEvent($APPLY, "_APPLY_WIM_ToVHD")
 GUICtrlSetTip($APPLY, " Apply WIM Image File to VHD File ")
 
-$CAPTURE = GUICtrlCreateButton("CAPTURE", 285, 83, 70, 30)
+$CAPTURE = GUICtrlCreateButton("CAPTURE", 32, 117, 70, 27)
 GUICtrlSetOnEvent($CAPTURE, "_CAPTURE_VHD_ToWIM")
 GUICtrlSetTip($CAPTURE, " Capture WIM Image File from VHD File " & @CRLF _
 & " Switch Windows Defender Off for Faster Capture ")
 
-$WIM_INFO = GUICtrlCreateButton("WIM Info", 32, 80, 70, 27)
+$WIM_INFO = GUICtrlCreateButton("WIM Info", 285, 40, 70, 27)
 GUICtrlSetOnEvent($WIM_INFO, "_WIM_INFO")
 GUICtrlSetTip($WIM_INFO, " Displays Info from WIM Image File ")
 
-$VHD_INFO = GUICtrlCreateButton("VHD Info", 32, 120, 70, 27)
+$VHD_INFO = GUICtrlCreateButton("VHD Info", 285, 120, 70, 27)
 GUICtrlSetOnEvent($VHD_INFO, "_VHD_INFO")
 GUICtrlSetTip($VHD_INFO, " Displays Info of WIM File connected to VHD File ")
 
-$Update_WIMBOOT = GUICtrlCreateButton("Upd WimBoot", 120, 80, 90, 27)
+$Update_WIMBOOT = GUICtrlCreateButton("Upd WimBoot", 275, 80, 90, 27)
 GUICtrlSetOnEvent($Update_WIMBOOT, "_Update_WIMBOOT")
 GUICtrlSetTip($Update_WIMBOOT, " Update WIMBootEntry in VHD File for New Location of WIM File ")
 
-$WIMBOOT = GUICtrlCreateCheckbox("", 120, 128, 17, 17)
-GUICtrlCreateLabel( "WimBoot Mode", 144, 130)
-GUICtrlSetTip($WIMBOOT, " Apply in WimBoot Mode ")
+$Combo_Apply_Mode = GUICtrlCreateCombo("", 120, 83, 90, 27, $CBS_DROPDOWNLIST)
+GUICtrlSetData($Combo_Apply_Mode,"Normal|WimBoot|Compact 4K|Compact 8K|Compact 16K|Compact LZX", "Compact LZX")
+GUICtrlCreateLabel( "Mode", 221, 87, 38, 15)
+GUICtrlSetTip($Combo_Apply_Mode, " Apply WIM File in Normal Mode Or WimBoot Mode " & @CRLF _
+& " Or Compact Mode with XPRESS4K  8K  16K  Or LZX Compression ")
 
-$LZX = GUICtrlCreateCheckbox("", 266, 128, 17, 17)
-GUICtrlCreateLabel( "LZX Compress", 290, 130)
-GUICtrlSetTip($LZX, " Capture WIM File with LZX Compression ")
+$Combo_Capture_Mode = GUICtrlCreateCombo("", 120, 120, 90, 27, $CBS_DROPDOWNLIST)
+; GUICtrlSetData($Combo_Capture_Mode,"Normal    4K|Normal    8K|Normal    16K|Normal    LZX|WimBoot 4K|WimBoot 8K|WimBoot 16K|WimBoot LZX", "WimBoot 4K")
+GUICtrlSetData($Combo_Capture_Mode,"Normal    4K|Normal    LZX|WimBoot 4K|WimBoot 8K|WimBoot 16K|WimBoot LZX", "WimBoot 4K")
+GUICtrlCreateLabel( "Mode", 221, 124, 38, 15)
+GUICtrlSetTip($Combo_Capture_Mode, " Capture WIM File in Normal Mode Or WimBoot Mode " & @CRLF _
+& " with XPRESS4K  8K  16K  Or LZX Compression ")
 
 GUICtrlCreateGroup("Target", 18, 252, 364, 89)
 
@@ -247,10 +253,11 @@ GUICtrlSetOnEvent($VHDX, "_prevhd")
 $DISK_TYPE = GUICtrlCreateCombo("", 114, 210, 75, 24, $CBS_DROPDOWNLIST)
 GUICtrlSetData($DISK_TYPE,"FILEDISK|RAMDISK", "FILEDISK")
 GUICtrlCreateLabel( "Preset", 75, 212, 38, 15)
-GUICtrlSetTip($DISK_TYPE, " Preset for Creating New VHD Files " & @CRLF _
-& " Select FILEDISK Or RAMDISK " & @CRLF _
-& " FILEDISK booting with Boot Manager Menu and MS Driver " & @CRLF _
-& " RAMDISK booting with Grub4dos Menu and SVBus Driver ")
+GUICtrlSetTip($DISK_TYPE, " Preset for Creating New VHD Files - Select FILEDISK Or RAMDISK " & @CRLF _
+& " FILEDISK - Apply with Compact LZX mode in Fixed VHD 25 GB " & @CRLF _
+& " FILEDISK - booting with Boot Manager Menu and MS Driver " & @CRLF _
+& " RAMDISK - Apply with WimBoot mode in Expandable VHD 3.9 GB " & @CRLF _
+& " RAMDISK - booting with Grub4dos Menu and SVBus Driver ")
 GUICtrlSetOnEvent($DISK_TYPE, "_preset")
 
 $EXIT = GUICtrlCreateButton("EXIT", 320, 360, 60, 30)
@@ -272,8 +279,8 @@ _GUICtrlStatusBar_SetText($hStatus," Select Wimboot Folder on System Drive", 0)
 
 DisableMenus(1)
 
-GUICtrlSetState($WIMBOOT, $GUI_CHECKED + $GUI_DISABLE)
-GUICtrlSetState($LZX, $GUI_UNCHECKED + $GUI_DISABLE)
+GUICtrlSetState($Combo_Apply_Mode, $GUI_DISABLE)
+GUICtrlSetState($Combo_Capture_Mode, $GUI_DISABLE)
 GUICtrlSetState($Update_WIMBOOT, $GUI_DISABLE)
 GUICtrlSetState($WIM_INFO, $GUI_DISABLE)
 GUICtrlSetState($VHD_INFO, $GUI_DISABLE)
@@ -304,10 +311,10 @@ Func CheckGo()
 	EndIf
  	If $wimfile <> "" And $WIM_Path <> "" Then
  		GUICtrlSetState($APPLY, $GUI_ENABLE)
-		GUICtrlSetState($WIMBOOT, $GUI_ENABLE)
+		GUICtrlSetState($Combo_Apply_Mode, $GUI_ENABLE)
 	Else
   		GUICtrlSetState($APPLY, $GUI_DISABLE)
-		GUICtrlSetState($WIMBOOT, $GUI_CHECKED + $GUI_DISABLE)
+		GUICtrlSetState($Combo_Apply_Mode, $GUI_DISABLE)
 	EndIf
  	If $TargetDrive <> "" And $vhdfile <> "" And $WIM_Path <> "" And FileExists($vhdfile) Then
 		GUICtrlSetState($Make_Boot, $GUI_ENABLE)
@@ -321,10 +328,12 @@ Func _preset()
 		GUICtrlSetData($ComboSize,"25.0 GB")
 		GUICtrlSetData($VHD_TYPE,"FIXED")
 		GUICtrlSetData($VHDX,"VHD")
+		GUICtrlSetData($Combo_Apply_Mode,"Compact LZX")
 	Else
 		GUICtrlSetData($ComboSize,"3.9 GB")
 		GUICtrlSetData($VHD_TYPE,"Expand")
 		GUICtrlSetData($VHDX,"VHD")
+		GUICtrlSetData($Combo_Apply_Mode,"WimBoot")
 	EndIf
 EndFunc   ;==> _preset
 ;===================================================================================================
@@ -335,7 +344,7 @@ Func _prevhd()
 		GUICtrlSetData($VHD_TYPE,"FIXED")
 	Else
 	EndIf
-EndFunc   ;==> _preset
+EndFunc   ;==> _prevhd
 ;===================================================================================================
 Func _Mount_EFI()
 	Local $TempDrives[4] = ["Z:", "Y:", "S:", "T:"], $AllDrives, $efi_drive = "Z:", $efi_temp_drive, $efi_valid = 0, $index_alldrives, $firm_val=0
@@ -383,6 +392,15 @@ Func _Update_WIMBOOT()
 	Local $val=0, $linesplit[20], $file, $line, $AutoPlay_Data="", $index_found = 0, $count = 0, $wim_found = ""
 
 	DisableMenus(1)
+
+	If StringLeft($wimfile, 3) <> StringLeft($WIM_Path, 3) Then
+		MsgBox(48,"ERROR - WIM File Not on System Drive", "WIM File Location Invalid for WimBoot Mode " & @CRLF & @CRLF & "Selected Image = " & $wimfile & @CRLF & @CRLF _
+		& "For WimBoot Mode Select WIM File on System Drive " & $WinDrvDrive)
+;~ 			$wimfile = ""
+;~ 			$wimfolder = ""
+		DisableMenus(0)
+		Return
+	EndIf
 
 	If $wimfile <> "" And $vhdfile <> "" And $WIM_Path <> "" And FileExists($vhdfile) Then
 
@@ -516,8 +534,11 @@ Func _Update_WIMBOOT()
 		EndIf
 
 		SystemFileRedirect("Off")
-
-		_GUICtrlStatusBar_SetText($hStatus," Make Boot can make Entries in Boot Menu ", 0)
+		If $TargetDrive = "" Then
+			_GUICtrlStatusBar_SetText($hStatus," Select Exit Or Select Boot Drive to Make Boot Entries", 0)
+		Else
+			_GUICtrlStatusBar_SetText($hStatus," Select Exit Or Make Boot to make Entries in Boot Menu", 0)
+		EndIf
 	Else
 		MsgBox(0, "Update-WIMBootEntry - Not Possible ", " WIM Image File = " & $wimfile & @CRLF & @CRLF _
 			& " VHD File = " & $vhdfile, 5)
@@ -734,7 +755,7 @@ Func _wim_fsel()
 	; _GUICtrlStatusBar_SetText($hStatus," Select WIM File on System Drive for APPLY to VHD ", 0)
 
 	; $wimfile = FileOpenDialog("Select WIM File for APPLY to VHD ", "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", "WIM Image Files ( *.wim; )")
-	$wimfile = FileOpenDialog("Select WIM File on System Drive for APPLY to VHD ", $WIM_Path & "\", "WIM Image Files ( *.wim; )")
+	$wimfile = FileOpenDialog("Select WIM File for APPLY to VHD on System Drive ", $WIM_Path & "\", "WIM Image Files ( *.wim; )")
 	If @error Then
 		$wimfile = ""
 		$wimfolder = ""
@@ -742,17 +763,17 @@ Func _wim_fsel()
 		Return
 	EndIf
 
-	If StringLeft($wimfile, 3) <> StringLeft($WIM_Path, 3) Then
-		MsgBox(48,"ERROR - WIM File Not Valid", "WIM File Selection Invalid" & @CRLF & @CRLF & "Selected Image = " & $wimfile & @CRLF & @CRLF _
-		& "Select WIM File on System Drive " & $WinDrvDrive)
-		$wimfile = ""
-		$wimfolder = ""
-		DisableMenus(0)
-		Return
-	EndIf
+	; If StringLeft($wimfile, 3) <> StringLeft($WIM_Path, 3) Then
+	; 	MsgBox(48,"WARNING - WIM File Not on System Drive", "WIM File Location Invalid for WimBoot Mode " & @CRLF & @CRLF & "Selected Image = " & $wimfile & @CRLF & @CRLF _
+	; 	& "For WimBoot Mode Select WIM File on System Drive " & $WinDrvDrive & @CRLF & @CRLF & "Or Select Other Apply Mode")
+;~ 			$wimfile = ""
+;~ 			$wimfolder = ""
+;~ 			DisableMenus(0)
+;~ 			Return
+	; EndIf
 
 	If StringRight($wimfile, 4) <> ".wim" Then
-		MsgBox(48,"ERROR - WIM File Not Valid", "WIM File Selection Invalid" & @CRLF & @CRLF & "Selected Image = " & $wimfile & @CRLF & @CRLF _
+		MsgBox(48,"ERROR - This is Not a WIM File", "WIM File Selection Invalid" & @CRLF & @CRLF & "Selected Image = " & $wimfile & @CRLF & @CRLF _
 		& "Select WIM File on System Drive " & $WinDrvDrive)
 		$wimfile = ""
 		$wimfolder = ""
@@ -761,7 +782,7 @@ Func _wim_fsel()
 	EndIf
 
 	If Not FileExists($wimfile) Then
-		MsgBox(48,"ERROR - WIM File Not Valid", "WIM File does Not Exist" & @CRLF & @CRLF & "Selected Image = " & $wimfile & @CRLF & @CRLF _
+		MsgBox(48,"ERROR - WIM File does Not Exist", "WIM File does Not Exist" & @CRLF & @CRLF & "Selected Image = " & $wimfile & @CRLF & @CRLF _
 		& "Select WIM File on System Drive " & $WinDrvDrive)
 		$wimfile = ""
 		$wimfolder = ""
@@ -771,7 +792,7 @@ Func _wim_fsel()
 
 	$pos = StringLen($wimfile)
 	If $pos  > 41 Then
-		MsgBox(48,"ERROR - WIM File Not Valid", "WIM FileName more than 25 Chars " & @CRLF & @CRLF & "Selected WIM File = " & $wimfile & @CRLF & @CRLF _
+		MsgBox(48,"ERROR - WIM File Name too Long", "WIM File Name more than 25 Chars " & @CRLF & @CRLF & "Selected WIM File = " & $wimfile & @CRLF & @CRLF _
 		& "Select WIM File on System Drive " & $WinDrvDrive)
 		$wimfile = ""
 		$wimfolder = ""
@@ -781,7 +802,7 @@ Func _wim_fsel()
 
 	$pos = StringInStr($wimfile, " ", 0, -1)
 	If $pos Then
-		MsgBox(48,"ERROR - WIM Image Path Invalid", "WIM Image Path Invalid - Space Found" & @CRLF & @CRLF & "Selected Image = " & $wimfile & @CRLF & @CRLF _
+		MsgBox(48,"ERROR - Space Found in WIM Path", "WIM Image Path Invalid - Space Found" & @CRLF & @CRLF & "Selected Image = " & $wimfile & @CRLF & @CRLF _
 		& "Solution - Use simple WIM Path without Spaces ")
 		$wimfile = ""
 		$wimfolder = ""
@@ -793,8 +814,8 @@ Func _wim_fsel()
 	If $pos <> 3 Then
 		$posfol = StringInStr($wimfile, "\", 0, -2)
 		If $posfol <> 3 Or $pos > 12 Then
-			MsgBox(48,"ERROR - WIM File Selection Not Valid", "WIM Not in root Or rootfolder max 8 chars" & @CRLF & @CRLF & "Selected WIM File = " & $wimfile & @CRLF & @CRLF _
-			& "Select WIM in folder max 8 chars or in root of System Drive " & $WinDrvDrive)
+			MsgBox(48,"ERROR - WIM Path Not Valid", "WIM Not in root Or rootfolder max 8 chars" & @CRLF & @CRLF & "Selected WIM File = " & $wimfile & @CRLF & @CRLF _
+			& "Select WIM in folder max 8 chars or in root of Drive ")
 			$wimfile = ""
 			$wimfolder = ""
 			DisableMenus(0)
@@ -908,11 +929,14 @@ Func _wim_fsel()
 							If $linesplit[1] = "Languages" Then
 								$Language = StringRight(StringStripWS($linesplit[2], 3), 2)
 							EndIf
-;~ 							If $linesplit[1] = "WIMBoot compatible" Then
-;~ 								$WIMBoot_compatible = StringStripWS($linesplit[2], 3)
-;~ 								If $WIMBoot_compatible = "yes" Then $valid = 1
-;~ 							EndIf
-							$valid = 1
+							If $linesplit[1] = "WIMBoot compatible" Then
+								$WIMBoot_compatible = StringStripWS($linesplit[2], 3)
+								If $WIMBoot_compatible = "yes" Then
+									$valid = 1
+								Else
+									$valid = 2
+								EndIf
+							EndIf
 						EndIf
 					EndIf
 				Wend
@@ -935,6 +959,11 @@ Func _wim_fsel()
 		$wimfolder = ""
 		DisableMenus(0)
 		Return
+	EndIf
+
+	If $valid = 2 Then
+		MsgBox(48,"WARNING - WIM File Not WIMBOOT Compatible", "WIM File Not WIMBOOT Compatible " & @CRLF & @CRLF & "Selected Image = " & $wimfile & @CRLF & @CRLF _
+		& "Apply in WimBoot Mode can give Capture Problem " & @CRLF & @CRLF & "Solution: First Capture WIM File in WimBoot Mode ")
 	EndIf
 
 	If $vhdfile <> "" Then
@@ -986,7 +1015,7 @@ Func _vhd_fsel()
 
 	$pos = StringLen($vhdfile)
 	If $pos  > 32 Then
-		MsgBox(48,"ERROR - VHD File Not Valid", "VHD FileName more than 25 Chars " & @CRLF & @CRLF & "Selected VHD File = " & $vhdfile & @CRLF & @CRLF _
+		MsgBox(48,"ERROR - VHD File Name too Long", "VHD File Name more than 25 Chars " & @CRLF & @CRLF & "Selected VHD File = " & $vhdfile & @CRLF & @CRLF _
 		& "Select VHD File on System Drive " & $WinDrvDrive)
 		$vhdfile = ""
 		$vhdfolder = ""
@@ -995,7 +1024,7 @@ Func _vhd_fsel()
 	EndIf
 
 	If StringLeft($vhdfile, 3) <> StringLeft($WIM_Path, 3) Then
-		MsgBox(48,"ERROR - VHD File Not Valid", "VHD File Selection Invalid" & @CRLF & @CRLF & "Selected VHD File = " & $vhdfile & @CRLF & @CRLF _
+		MsgBox(48,"ERROR - VHD File Location Not Valid", "VHD File Selection Invalid" & @CRLF & @CRLF & "Selected VHD File = " & $vhdfile & @CRLF & @CRLF _
 		& "Select VHD File on System Drive " & $WinDrvDrive)
 		$vhdfile = ""
 		$vhdfolder = ""
@@ -1004,7 +1033,7 @@ Func _vhd_fsel()
 	EndIf
 
 	If @OSVersion = "WIN_7" And StringRight($vhdfile, 4) <> ".vhd" Then
-		MsgBox(48,"ERROR - Selected File Not Valid", " In Windows 7 only VHD File Type allowed" & @CRLF & @CRLF & "Selected VHD File = " & $vhdfile & @CRLF & @CRLF _
+		MsgBox(48,"ERROR - File Extension Not Valid", " In Windows 7 only VHD File Type allowed" & @CRLF & @CRLF & "Selected VHD File = " & $vhdfile & @CRLF & @CRLF _
 		& "Select VHD File on System Drive " & $WinDrvDrive)
 		$vhdfile = ""
 		$vhdfolder = ""
@@ -1015,7 +1044,7 @@ Func _vhd_fsel()
 	If StringRight($vhdfile, 4) = ".vhd" Or StringRight($vhdfile, 5) = ".vhdx" Then
 		; OK
 	Else
-		MsgBox(48,"ERROR - VHD File Not Valid", "VHD File Selection Invalid" & @CRLF & @CRLF & "Selected VHD File = " & $vhdfile & @CRLF & @CRLF _
+		MsgBox(48,"ERROR - File Extension Not Valid", "VHD File Selection Invalid" & @CRLF & @CRLF & "Selected VHD File = " & $vhdfile & @CRLF & @CRLF _
 		& "Select VHD File on System Drive " & $WinDrvDrive)
 		$vhdfile = ""
 		$vhdfolder = ""
@@ -1025,7 +1054,7 @@ Func _vhd_fsel()
 
 	$pos = StringInStr($vhdfile, " ", 0, -1)
 	If $pos Then
-		MsgBox(48,"ERROR - VHD File Not Valid", "Space Found in VHD FileName" & @CRLF & @CRLF & "Selected VHD File = " & $vhdfile & @CRLF & @CRLF _
+		MsgBox(48,"ERROR - Space Found in VHD File Name", "Space Found in VHD File Name" & @CRLF & @CRLF & "Selected VHD File = " & $vhdfile & @CRLF & @CRLF _
 		& "Select VHD File in on System Drive " & $WinDrvDrive)
 		$vhdfile = ""
 		$vhdfolder = ""
@@ -1044,7 +1073,7 @@ Func _vhd_fsel()
 	$vhd_fname = StringLeft($vhdtemp_name, $pos-1)
 	; If StringRegExp($vhd_fname, "[^A-Z0-9a-z-_]") Or StringRegExp($vhd_fext, "[^A-Za-z]") Then
 	If StringRegExp($vhd_fname, "[^A-Z0-9a-z-_]") Then
-		MsgBox(48,"ERROR - VHD File Not Valid", "Only Chars 0-9 A-Z a-z - _ allowed in FileName" & @CRLF & @CRLF & "Selected VHD File = " & $vhdfile & @CRLF & @CRLF _
+		MsgBox(48,"ERROR - VHD File Name Not Valid", "Only Chars 0-9 A-Z a-z - _ allowed in File Name" & @CRLF & @CRLF & "Selected VHD File = " & $vhdfile & @CRLF & @CRLF _
 		& "Select VHD File on System Drive " & $WinDrvDrive)
 		$vhdfile = ""
 		$vhdfolder = ""
@@ -1083,7 +1112,7 @@ Func _vhd_fsel()
 	If $pos <> 3 Then
 		$posfol = StringInStr($vhdfile, "\", 0, -2)
 		If $posfol <> 3 Or $pos > 12 Then
-			MsgBox(48,"ERROR - VHD File Selection Not Valid", "VHD Not in root Or rootfolder max 8 chars" & @CRLF & @CRLF & "Selected VHD File = " & $vhdfile & @CRLF & @CRLF _
+			MsgBox(48,"ERROR - VHD File Location Not Valid", "VHD Not in root Or rootfolder max 8 chars" & @CRLF & @CRLF & "Selected VHD File = " & $vhdfile & @CRLF & @CRLF _
 			& "Select VHD in folder max 8 chars Or in root of System Drive " & $WinDrvDrive)
 			$vhdfile = ""
 			$vhdfolder = ""
@@ -1437,11 +1466,20 @@ Func _APPLY_WIM_ToVHD()
 
 	Local $linesplit[20], $file, $line, $AutoPlay_Data=""
 
-	Local $val=0, $valid = 0, $AllDrives
+	Local $val=0, $val_wimlib=0, $valid = 0, $AllDrives
 
 	Local $TempDrives[8] = ["V:", "T:", "S:", "Q:", "P:", "O:", "Y:", "W:"]
 
 	DisableMenus(1)
+
+	If GUICtrlRead($Combo_Apply_Mode) = "WimBoot" And StringLeft($wimfile, 3) <> StringLeft($WIM_Path, 3) Then
+		MsgBox(48,"ERROR - WIM File Not on System Drive", "WIM File Location Invalid for WimBoot Mode " & @CRLF & @CRLF & "Selected Image = " & $wimfile & @CRLF & @CRLF _
+		& "For WimBoot Mode Select WIM File on System Drive " & $WinDrvDrive & @CRLF & @CRLF & "Or Select Other Apply Mode")
+;~ 			$wimfile = ""
+;~ 			$wimfolder = ""
+		DisableMenus(0)
+		Return
+	EndIf
 
 	If $vhdfile <> "" And FileExists($vhdfile) Then
 		$vhd_size = $VHDSize
@@ -1483,13 +1521,13 @@ Func _APPLY_WIM_ToVHD()
 		EndIf
 	EndIf
 
-	If GUICtrlRead($WIMBOOT) = $GUI_UNCHECKED And $vhd_size < 25000 Then
-		MsgBox(48, " STOP - VHD Size too Small fo Full Apply ", " VHD Size less than 25 GB " & @CRLF & @CRLF & " Increase VHD Size Or Select WimBoot Mode ", 0)
-		GUICtrlSetData($ProgressAll, 0)
-		_GUICtrlStatusBar_SetText($hStatus," Select WIM File for APPLY Or Select Exit ", 0)
-		DisableMenus(0)
-		Return
-	EndIf
+;~ 		If GUICtrlRead($Combo_Apply_Mode) = "Normal" And $vhd_size < 25000 Then
+;~ 			MsgBox(48, " WARNING - VHD Size too Small fo Full Apply ", " VHD Size less than 25 GB " & @CRLF & @CRLF & " Increase VHD Size Or Select WimBoot Mode ", 0)
+;~ 			;	GUICtrlSetData($ProgressAll, 0)
+;~ 			;	_GUICtrlStatusBar_SetText($hStatus," Select WIM File for APPLY Or Select Exit ", 0)
+;~ 			;	DisableMenus(0)
+;~ 			;	Return
+;~ 		EndIf
 
 	If $TargetDrive = "" Then
 		$ikey = MsgBox(48+4+256, " Boot Drive Not Selected ", " Continue without making Boot entries ? ")
@@ -1759,19 +1797,66 @@ Func _APPLY_WIM_ToVHD()
 
 			; EndIf
 ; 		Else
+			; $Combo_Apply_Mode can be "Normal|WimBoot|Compact 4K|Compact 8K|Compact 16K|Compact LZX"
+
 			_GUICtrlStatusBar_SetText($hStatus," APPLY WIM to " & $vhdfile_name & " by wimlib - wait .... ", 0)
 			If @OSArch = "X86" Then
-				If GUICtrlRead($WIMBOOT) = $GUI_CHECKED Then
-					$val = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\ --wimboot", "", "open")
+				If GUICtrlRead($Combo_Apply_Mode) = "Normal" Then
+					$val_wimlib = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\", "", "open")
+				ElseIf GUICtrlRead($Combo_Apply_Mode) = "Compact 4K" Then
+					$val_wimlib = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\ --compact=xpress4k", "", "open")
+				ElseIf GUICtrlRead($Combo_Apply_Mode) = "Compact 8K" Then
+					$val_wimlib = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\ --compact=xpress8k", "", "open")
+				ElseIf GUICtrlRead($Combo_Apply_Mode) = "Compact 16K" Then
+					$val_wimlib = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\ --compact=xpress16k", "", "open")
+				ElseIf GUICtrlRead($Combo_Apply_Mode) = "Compact LZX" Then
+					$val_wimlib = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\ --compact=lzx", "", "open")
 				Else
-					$val = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\", "", "open")
+					$val_wimlib = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\ --wimboot", "", "open")
 				EndIf
 			Else
-				If GUICtrlRead($WIMBOOT) = $GUI_CHECKED Then
-					$val = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\ --wimboot", "", "open")
+				If GUICtrlRead($Combo_Apply_Mode) = "Normal" Then
+					$val_wimlib = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\", "", "open")
+				ElseIf GUICtrlRead($Combo_Apply_Mode) = "Compact 4K" Then
+					$val_wimlib = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\ --compact=xpress4k", "", "open")
+				ElseIf GUICtrlRead($Combo_Apply_Mode) = "Compact 8K" Then
+					$val_wimlib = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\ --compact=xpress8k", "", "open")
+				ElseIf GUICtrlRead($Combo_Apply_Mode) = "Compact 16K" Then
+					$val_wimlib = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\ --compact=xpress16k", "", "open")
+				ElseIf GUICtrlRead($Combo_Apply_Mode) = "Compact LZX" Then
+					$val_wimlib = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\ --compact=lzx", "", "open")
 				Else
-					$val = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\", "", "open")
+					$val_wimlib = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "apply " & '"' & $wimfile & '"' & " " & $tmpdrive & "\ --wimboot", "", "open")
 				EndIf
+			EndIf
+			If $val_wimlib <> 0 Then
+				; STOP - wimlib Apply Error
+				GUICtrlSetData($ProgressAll, 45)
+				sleep(2000)
+				; Reset Disable AutoPlay to Original value 0 = Enable AutoPlay
+				If $AutoPlay_Data = "0x0" Or $AutoPlay_Data = "" Then
+					RunWait(@ComSpec & " /c reg add HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers /v DisableAutoplay /t REG_DWORD /d 0 /f", @ScriptDir, @SW_HIDE)
+					; MsgBox(48, "Info AutoPlay Enabled ", "  " & @CRLF & @CRLF & " Disable AutoPlay_Data = 0 ", 0)
+				EndIf
+				_GUICtrlStatusBar_SetText($hStatus," Detach VHD " & $vhdfile_name, 0)
+				GUICtrlSetData($ProgressAll, 70)
+				$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
+				If $val <> 0 Then
+					MsgBox(48, " Error DiskPart", " Detach VHD - DiskPart Error = " & $val, 0)
+				EndIf
+				SystemFileRedirect("Off")
+				sleep(2000)
+				GUICtrlSetData($ProgressAll, 100)
+				_GUICtrlStatusBar_SetText($hStatus," End of Program ", 0)
+				MsgBox(16, " ERROR - END OF PROGRAM - VHD and WIM Invalid ", " End of Program - wimlib Apply Error " & @CRLF _
+				& @CRLF & "Boot files NOT created on Boot Drive " & $TargetDrive & @CRLF _
+				& @CRLF & $vhdfile_name & " is on System Drive " & $WinDrvDrive & @CRLF _
+				& @CRLF & $wimfile & " - wimlib Apply Error " & @CRLF _
+				& @CRLF & "ERROR - VHD and WIM Invalid - wimlib Return Code = " & $val_wimlib, 0)
+				_GUICtrlStatusBar_SetText($hStatus," Select Other WIM File for APPLY Or Select Exit ", 0)
+				GUICtrlSetData($ProgressAll, 0)
+				DisableMenus(0)
+				Return
 			EndIf
 ; 		EndIf
 	EndIf
@@ -1854,11 +1939,13 @@ Func _APPLY_WIM_ToVHD()
 			EndIf
 			If $winload_flag = 0 Then
 				MsgBox(64, " END OF PROGRAM - VHD Invalid ", " End of Program  - winload.exe Missing " & @CRLF _
-				& @CRLF & "Boot files NOT created on Boot Drive " & $TargetDrive & @CRLF _
 				& @CRLF & $vhdfile_name & " is on System Drive " & $WinDrvDrive)
 			EndIf
 		EndIf
-		Exit
+		_GUICtrlStatusBar_SetText($hStatus," Select Preset Or VHD for APPLY Or Select Exit ", 0)
+		GUICtrlSetData($ProgressAll, 0)
+		DisableMenus(0)
+		Return
 	EndIf
 
 	If $TargetDrive <> "" And $VHD_Overflow = 0 And $winload_flag = 1 Then
@@ -1894,12 +1981,18 @@ Func _APPLY_WIM_ToVHD()
 			& @CRLF & $vhdfile_name & " is on System Drive " & $WinDrvDrive)
 		EndIf
 	EndIf
-	Exit
+
+	_GUICtrlStatusBar_SetText($hStatus," Select Preset Or VHD for APPLY Or Select Exit ", 0)
+	GUICtrlSetData($ProgressAll, 0)
+	DisableMenus(0)
+	Return
+
+	; Exit
 EndFunc   ;==> _APPLY_WIM_ToVHD
 ;===================================================================================================
 Func _CAPTURE_VHD_ToWIM()
 
-	Local $val=0, $i=0, $capt_nr=1, $capt_name="W10x64_US_"
+	Local $val=0, $val_capt=0, $i=0, $capt_nr=1, $capt_name="W10x64_US_"
 	Local $linesplit[20], $file, $line, $AutoPlay_Data=""
 
 	DisableMenus(1)
@@ -2045,20 +2138,74 @@ Func _CAPTURE_VHD_ToWIM()
 ;~ 				MsgBox(48, "WARNING - Dism CAPTURE", "Dism CAPTURE return with error code : " & $val, 0)
 ;~ 			EndIf
 ;~ 		Else
+		; $Combo_Capture_Mode can be  "Normal    4K|Normal    LZX|WimBoot 4K|WimBoot LZX"
+
 		_GUICtrlStatusBar_SetText($hStatus," wimlib is used for CAPTURE of Drive " & $tmpdrive & " - wait .... ", 0)
 		If @OSArch = "X86" Then
-			If GUICtrlRead($LZX) = $GUI_CHECKED Then
-				$val = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_wimboot & '"' & " --include-integrity --wimboot --compress=LZX --chunk-size=32K", "", "open")
+			If GUICtrlRead($Combo_Capture_Mode) = "Normal    4K" Then
+				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_normal & '"' & " --include-integrity --compress=XPRESS --chunk-size=4K", "", "open")
+;~ 			ElseIf GUICtrlRead($Combo_Capture_Mode) = "Normal    8K" Then
+;~ 				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_normal & '"' & " --include-integrity --compress=XPRESS --chunk-size=8K", "", "open")
+;~ 			ElseIf GUICtrlRead($Combo_Capture_Mode) = "Normal    16K" Then
+;~ 				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_normal & '"' & " --include-integrity --compress=XPRESS --chunk-size=16K", "", "open")
+			ElseIf GUICtrlRead($Combo_Capture_Mode) = "Normal    LZX" Then
+				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_normal & '"' & " --include-integrity --compress=LZX --chunk-size=32K", "", "open")
+			ElseIf GUICtrlRead($Combo_Capture_Mode) = "WimBoot LZX" Then
+				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_wimboot & '"' & " --include-integrity --wimboot --compress=LZX --chunk-size=32K", "", "open")
+			ElseIf GUICtrlRead($Combo_Capture_Mode) = "WimBoot 16K" Then
+				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_wimboot & '"' & " --include-integrity --wimboot --compress=XPRESS --chunk-size=16K", "", "open")
+			ElseIf GUICtrlRead($Combo_Capture_Mode) = "WimBoot 8K" Then
+				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_wimboot & '"' & " --include-integrity --wimboot --compress=XPRESS --chunk-size=8K", "", "open")
 			Else
-				$val = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_wimboot & '"' & " --include-integrity --wimboot", "", "open")
+				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x86\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_wimboot & '"' & " --include-integrity --wimboot", "", "open")
 			EndIf
 		Else
-			If GUICtrlRead($LZX) = $GUI_CHECKED Then
-				$val = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_wimboot & '"' & " --include-integrity --wimboot --compress=LZX --chunk-size=32K", "", "open")
+			If GUICtrlRead($Combo_Capture_Mode) = "Normal    4K" Then
+				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_normal & '"' & " --include-integrity --compress=XPRESS --chunk-size=4K", "", "open")
+;~ 			ElseIf GUICtrlRead($Combo_Capture_Mode) = "Normal    8K" Then
+;~ 				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_normal & '"' & " --include-integrity --compress=XPRESS --chunk-size=8K", "", "open")
+;~ 			ElseIf GUICtrlRead($Combo_Capture_Mode) = "Normal    16K" Then
+;~ 				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_normal & '"' & " --include-integrity --compress=XPRESS --chunk-size=16K", "", "open")
+			ElseIf GUICtrlRead($Combo_Capture_Mode) = "Normal    LZX" Then
+				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_normal & '"' & " --include-integrity --compress=LZX --chunk-size=32K", "", "open")
+			ElseIf GUICtrlRead($Combo_Capture_Mode) = "WimBoot LZX" Then
+				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_wimboot & '"' & " --include-integrity --wimboot --compress=LZX --chunk-size=32K", "", "open")
+			ElseIf GUICtrlRead($Combo_Capture_Mode) = "WimBoot 16K" Then
+				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_wimboot & '"' & " --include-integrity --wimboot --compress=XPRESS --chunk-size=16K", "", "open")
+			ElseIf GUICtrlRead($Combo_Capture_Mode) = "WimBoot 8K" Then
+				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_wimboot & '"' & " --include-integrity --wimboot --compress=XPRESS --chunk-size=8K", "", "open")
 			Else
-				$val = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_wimboot & '"' & " --include-integrity --wimboot", "", "open")
+				$val_capt = ShellExecuteWait('"' & @ScriptDir & "\wimlib_x64\wimlib-imagex.exe" & '"', "capture " & $tmpdrive & "\ " & '"' & $WIM_Path & "\" & $capt_name & $capt_nr & ".wim" & '"' & " " & '"' & $vhdfile_name_only & '"' & " --config=" & '"' & $config_file_wimboot & '"' & " --include-integrity --wimboot", "", "open")
 			EndIf
 		EndIf
+		; MsgBox(48, " Return Code ", " wimlib Return Code = " & $val_capt, 0)
+		If $val_capt <> 0 Then
+			; STOP - wimlib Capture Error
+			GUICtrlSetData($ProgressAll, 45)
+			sleep(2000)
+			If $vhdfile <> "" And $tmpdrive <> "" Then
+				_GUICtrlStatusBar_SetText($hStatus," Detach VHD " & $vhdfile_name, 0)
+				GUICtrlSetData($ProgressAll, 70)
+				$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
+				If $val <> 0 Then
+					MsgBox(48, " Error DiskPart", " Detach Dest VHD - DiskPart Error = " & $val, 0)
+				EndIf
+			EndIf
+			SystemFileRedirect("Off")
+			sleep(2000)
+			GUICtrlSetData($ProgressAll, 100)
+			_GUICtrlStatusBar_SetText($hStatus," ERROR - End of Capture ", 0)
+			MsgBox(16, " ERROR - END OF CAPTURE - WIM Invalid ", " End of Capture - wimlib Capture Error " & @CRLF _
+			& @CRLF & "CAPTURE of VHD Source File " & $vhdfile & @CRLF _
+			& @CRLF & $capt_name & $capt_nr & ".wim WIM File in Folder " & $WIM_Path & @CRLF _
+			& @CRLF & "ERROR - WIM Invalid - wimlib Return Code = " & $val_capt, 0)
+
+			_GUICtrlStatusBar_SetText($hStatus," Select Other VHD File for Capture Or Select Exit ", 0)
+			GUICtrlSetData($ProgressAll, 0)
+			DisableMenus(0)
+			Return
+		EndIf
+
 	; EndIf
 
 	If $vhdfile <> "" And $tmpdrive <> "" Then
@@ -2235,12 +2382,10 @@ Func _BCD_Inside_Entry()
 		& $store & " /set " & $guid & " detecthal on", $tmpdrive & "\", @SW_HIDE)
 		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
 		& $store & " /set " & $guid & " bootmenupolicy legacy", $tmpdrive & "\", @SW_HIDE)
-		; If $SysWOW64=1 Then
-		If $SysWOW64=1 And StringRight($vhdfile_name, 4) = ".vhd" And $PartStyle = "MBR" Or $driver_flag = 3 Then
-			RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
-			& $store & " /set " & $guid & " testsigning on", $tmpdrive & "\", @SW_HIDE)
-		EndIf
-		; EndIf
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $guid & " loadoptions DISABLE_INTEGRITY_CHECKS", $tmpdrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $guid & " testsigning on", $tmpdrive & "\", @SW_HIDE)
 		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} device boot", $tmpdrive & "\", @SW_HIDE)
 		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} nointegritychecks on", $tmpdrive & "\", @SW_HIDE)
 		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} timeout 1", $tmpdrive & "\", @SW_HIDE)
@@ -2332,12 +2477,10 @@ Func _BCD_BootDrive_VHD_Entry()
 		& $store & " /set " & $guid & " detecthal on", $TargetDrive & "\", @SW_HIDE)
 		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
 		& $store & " /set " & $guid & " bootmenupolicy legacy", $TargetDrive & "\", @SW_HIDE)
-		; If $SysWOW64=1 Then
-		If $SysWOW64=1 And StringRight($vhdfile_name, 4) = ".vhd" And $PartStyle = "MBR" Or $driver_flag = 3 Then
-			RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
-			& $store & " /set " & $guid & " testsigning on", $TargetDrive & "\", @SW_HIDE)
-		EndIf
-		; EndIf
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $guid & " loadoptions DISABLE_INTEGRITY_CHECKS", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $guid & " testsigning on", $TargetDrive & "\", @SW_HIDE)
 		If $OS_drive <> $TargetDrive Then
 			RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
 			& $store & " /set {bootmgr} nointegritychecks on", $TargetDrive & "\", @SW_HIDE)
@@ -2486,7 +2629,7 @@ Func _Boot_Entries()
 	EndIf
 
 	; Grub4dos Menu entry in case of SVBus driver and VHD - Grub4dos does Not work with VHDX
-	If $driver_flag = 3 And StringRight($vhdfile_name, 4) = ".vhd" And $PartStyle = "MBR" Then
+	If $driver_flag = 3 Or GUICtrlRead($DISK_TYPE) = "RAMDISK" And StringRight($vhdfile_name, 4) = ".vhd" And $PartStyle = "MBR" Then
 		_GUICtrlStatusBar_SetText($hStatus," Making Grub4dos Menu on Target Boot Drive " & $TargetDrive, 0)
 		If $vhdfolder = "" Then
 			$entry_image_file= $vhdfile_name
@@ -2790,7 +2933,10 @@ Func _Make_Boot()
 		MsgBox(64, " END OF PROGRAM - OK ", " End of Program  - OK " & @CRLF _
 		& @CRLF & "Boot files created on Boot Drive " & $TargetDrive & @CRLF _
 		& @CRLF & $vhdfile_name & " is on System Drive " & $WinDrvDrive)
-		Exit
+		_GUICtrlStatusBar_SetText($hStatus," Select Exit Or Select VHD ", 0)
+		GUICtrlSetData($ProgressAll, 0)
+		DisableMenus(0)
+		Return
 	Else
 		MsgBox(48, " STOP - VHD Invalid", " VHD Invalid - winload.exe Missing " & @CRLF & @CRLF & " Invalid VHD " & $vhdfile, 0)
 		_GUICtrlStatusBar_SetText($hStatus," Select Exit Or Select VHD ", 0)
@@ -2850,9 +2996,9 @@ Func DisableMenus($endis)
 	EndIf
 
  	If $wimfile = "" And $vhdfile <> "" And $WIM_Path <> "" And FileExists($vhdfile) Then
-		GUICtrlSetState($LZX, $endis)
+		GUICtrlSetState($Combo_Capture_Mode, $endis)
 	Else
-		GUICtrlSetState($LZX, $GUI_UNCHECKED + $GUI_DISABLE)
+		GUICtrlSetState($Combo_Capture_Mode, $GUI_DISABLE)
 	EndIf
 
 	If $wimfile <> "" Or $vhdfile <> "" Then
@@ -2873,7 +3019,7 @@ Func DisableMenus($endis)
 		GUICtrlSetState($DISK_TYPE, $GUI_DISABLE)
 		GUICtrlSetState($TargetSel, $GUI_DISABLE)
 		GUICtrlSetState($Target, $GUI_DISABLE)
-		GUICtrlSetState($LZX, $GUI_DISABLE)
+		GUICtrlSetState($Combo_Capture_Mode, $GUI_DISABLE)
 	Else
 		GUICtrlSetState($WIM_FileSelect, $endis)
 		GUICtrlSetState($WIM_File, $endis)
@@ -2891,7 +3037,7 @@ Func DisableMenus($endis)
 		GUICtrlSetState($Target, $endis)
 	EndIf
 
-	GUICtrlSetState($WIMBOOT, $GUI_DISABLE)
+	GUICtrlSetState($Combo_Apply_Mode, $GUI_DISABLE)
 	GUICtrlSetState($Make_Boot, $GUI_DISABLE)
 	GUICtrlSetState($APPLY, $GUI_DISABLE)
 	GUICtrlSetState($CAPTURE, $GUI_DISABLE)

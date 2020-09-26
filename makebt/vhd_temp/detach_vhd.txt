@@ -1,0 +1,3 @@
+select vdisk file="C:\Win10x64_2009_2.vhd"
+detach vdisk
+exit

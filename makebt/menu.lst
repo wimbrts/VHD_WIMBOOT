@@ -25,6 +25,9 @@ map --mem (hd0,0)/grubfm_multiarch.iso (0xff)
 map --hook
 chainloader (0xff)
 
+iftitle [if exist (hd0,0)/grub/core.img] Grub2 Menu of a1ive - (hd0,0)/grub/core.img
+kernel /grub/core.img
+
 iftitle [ls (hd0,0)/images] Windows ISO Menu - (hd0,0)/images
 set iso_drive=(hd0,0)
 find --set-root /menu_Win_ISO.lst
@@ -45,10 +48,8 @@ set iso_drive=(hd0,1)
 find --set-root /menu_Linux.lst
 configfile /menu_Linux.lst
 
-iftitle [ls (hd0,0)/iso] Linux   ISO Menu - (hd0,0)/iso
-set iso_drive=(hd0,0)
-find --set-root /menu_Linux.lst
-configfile /menu_Linux.lst
+iftitle [if exist %iso_drive%/AIO/Menu/Grub4dos.lst] AIO Grub4dos Menu - %iso_drive%/AIO/Menu/Grub4dos.lst
+configfile %iso_drive%/AIO/Menu/Grub4dos.lst
 
 iftitle [if exist (hd1,0)/bootmgr] Boot Windows from first primary partition of first hard disk 
 chainloader (hd1,0)/bootmgr
