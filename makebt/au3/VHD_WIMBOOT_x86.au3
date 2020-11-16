@@ -3,9 +3,9 @@
 
  AutoIt Version: 3.3.14.5 + put file SciTEUser.properties in your UserProfile e.g. C:\Users\User-10
 
- Author:        WIMB  -  September 21, 2020
+ Author:        WIMB  -  November 07, 2020
 
- Program:       VHD_WIMBOOT_x86.exe - Version 3.3 in rule 158
+ Program:       VHD_WIMBOOT_x86.exe - Version 3.4 in rule 158
 
  Script Function:
 
@@ -155,7 +155,7 @@ SystemFileRedirect("Off")
 $hGuiParent = GUICreate(" VHD_WIMBOOT x86 - APPLY WIM to VHD file - wimlib", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
-GUICtrlCreateGroup("System Files - Version 3.3  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 235)
+GUICtrlCreateGroup("System Files - Version 3.4  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 235)
 
 GUICtrlCreateLabel( "  WIM File", 32, 29)
 $WIM_Size_Label = GUICtrlCreateLabel( "", 130, 29, 60, 15, $ES_READONLY)
@@ -1993,7 +1993,7 @@ EndFunc   ;==> _APPLY_WIM_ToVHD
 Func _CAPTURE_VHD_ToWIM()
 
 	Local $val=0, $val_capt=0, $i=0, $capt_nr=1, $capt_name="W10x64_US_"
-	Local $linesplit[20], $file, $line, $AutoPlay_Data=""
+	Local $linesplit[20], $file, $line, $AutoPlay_Data="", $VHD_Size_Free = 0, $VHD_Size_Total = 0, $VHD_Size_Used = 0
 
 	DisableMenus(1)
 
@@ -2116,14 +2116,20 @@ Func _CAPTURE_VHD_ToWIM()
 			Return
 		EndIf
 	Next
+
+	$VHD_Size_Total = Round(DriveSpaceTotal($tmpdrive))
+	$VHD_Size_Free = Round(DriveSpaceFree($tmpdrive))
+	$VHD_Size_Used = $VHD_Size_Total - $VHD_Size_Free
+
 	$WinDrvSpaceAvail = Round(DriveSpaceFree($WinDrvDrive))
-	If $WinDrvSpaceAvail < 15000 Then
+	If $WinDrvSpaceAvail - $VHD_Size_Used < 0 Or $WinDrvSpaceAvail < 4000 Then
 		_GUICtrlStatusBar_SetText($hStatus," Detach VHD " & $vhdfile_name, 0)
 		GUICtrlSetData($ProgressAll, 70)
 		$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
 		SystemFileRedirect("Off")
-		MsgBox(48, "Error - Not enough FREE Space ", " Not enough FREE Space on Drive " & $WinDrvDrive & @CRLF & @CRLF _
-		&  " FREE Space is " & $WinDrvSpaceAvail & " MB", 0)
+		MsgBox(48, "Error - Not enough FREE Space for WIM File ", " Not enough FREE Space on Drive " & $WinDrvDrive & @CRLF & @CRLF _
+		&  " FREE Space is " & $WinDrvSpaceAvail & " MB" & @CRLF & @CRLF _
+		&  " VHD Used Size " & $VHD_Size_Used & " MB", 0)
 		_GUICtrlStatusBar_SetText($hStatus," Select Exit Or Select CAPTURE ", 0)
 		GUICtrlSetData($ProgressAll, 0)
 		DisableMenus(0)
@@ -2629,7 +2635,8 @@ Func _Boot_Entries()
 	EndIf
 
 	; Grub4dos Menu entry in case of SVBus driver and VHD - Grub4dos does Not work with VHDX
-	If $driver_flag = 3 Or GUICtrlRead($DISK_TYPE) = "RAMDISK" And StringRight($vhdfile_name, 4) = ".vhd" And $PartStyle = "MBR" Then
+	; If $driver_flag = 3 Or GUICtrlRead($DISK_TYPE) = "RAMDISK" And StringRight($vhdfile_name, 4) = ".vhd" And $PartStyle = "MBR" Then
+	If StringRight($vhdfile_name, 4) = ".vhd" And $PartStyle = "MBR" Then
 		_GUICtrlStatusBar_SetText($hStatus," Making Grub4dos Menu on Target Boot Drive " & $TargetDrive, 0)
 		If $vhdfolder = "" Then
 			$entry_image_file= $vhdfile_name
