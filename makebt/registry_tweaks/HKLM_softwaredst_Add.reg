@@ -1,0 +1,49 @@
+Windows Registry Editor Version 5.00
+
+;------------------------------------------------------------------------------------------------------------
+; SuppressNewHWUI - Suppress popup of Wizard New Hardware found, so that Universal OS can continue recognizing New Hardware
+;------------------------------------------------------------------------------------------------------------
+[HKEY_LOCAL_MACHINE\softwaredst\Policies\Microsoft\Windows\DeviceInstall\Settings]
+"SuppressNewHWUI"=dword:00000001
+
+;------------------------------------------------------------------------------------------------------------
+; Diable SystemRestore
+;------------------------------------------------------------------------------------------------------------
+[HKEY_LOCAL_MACHINE\softwaredst\Microsoft\Windows Nt\CurrentVersion\SystemRestore]
+"DisableSR"=dword:00000001
+
+;------------------------------------------------------------------------------------------------------------
+; Disable Automatic Windows Updates - Notify Only,  No download - Diabled
+;------------------------------------------------------------------------------------------------------------
+; [HKEY_LOCAL_MACHINE\softwaredst\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update]
+; "AUOptions"=dword:00000002
+;------------------------------------------------------------------------------------------------------------
+
+; Win7 Search drivers via WindowsUpdate - Auto Install of some missing drivers
+
+[HKEY_LOCAL_MACHINE\softwaredst\Microsoft\Windows\CurrentVersion\Device Metadata]
+"PreventDeviceMetadataFromNetwork"=dword:00000000
+
+[HKEY_LOCAL_MACHINE\softwaredst\Microsoft\Windows\CurrentVersion\DriverSearching]
+"SearchOrderConfig"=dword:00000001
+
+; Disable WindowsUpdate
+[HKEY_LOCAL_MACHINE\softwaredst\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update]
+"AUOptions"=dword:00000001
+
+
+; Search PStart Menu for Portable Apps - Disabled
+
+; [HKEY_LOCAL_MACHINE\softwaredst\Microsoft\Windows\CurrentVersion\Run]
+; "PStartMenu"="PS.exe"
+
+; Search PStart Menu for Portable Apps using auto Run of PS.exe in folder SysWOW64 - Disabled
+
+; [HKEY_LOCAL_MACHINE\softwaredst\Microsoft\Windows\CurrentVersion\Run]
+; "PStart-x64"=hex(2):25,00,53,00,79,00,73,00,74,00,65,00,6d,00,52,00,6f,00,6f,\
+;   00,74,00,25,00,5c,00,53,00,79,00,73,00,57,00,4f,00,57,00,36,00,34,00,5c,00,\
+;   50,00,53,00,2e,00,65,00,78,00,65,00,00,00
+
+[HKEY_LOCAL_MACHINE\softwaredst\Microsoft\Windows\CurrentVersion\Explorer\Advanced]
+"Start_ShowHelp"=dword:00000000
+"Start_ShowMyGames"=dword:00000000
