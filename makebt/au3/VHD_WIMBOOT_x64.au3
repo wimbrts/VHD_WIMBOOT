@@ -3,9 +3,9 @@
 
  AutoIt Version: 3.3.14.5 + put file SciTEUser.properties in your UserProfile e.g. C:\Users\User-10
 
- Author:        WIMB  -  November 07, 2020
+ Author:        WIMB  -  November 18, 2020
 
- Program:       VHD_WIMBOOT_x64.exe - Version 3.4 in rule 158
+ Program:       VHD_WIMBOOT_x64.exe - Version 3.5 in rule 162
 
  Script Function:
 
@@ -55,7 +55,7 @@ Opt("TrayIconHide", 1)
 ; Declaration GUI variables
 Global $hGuiParent, $ProgressAll, $hStatus, $EXIT, $DISK_TYPE, $Combo_Apply_Mode, $Combo_Capture_Mode
 Global $APPLY, $CAPTURE, $WIM_INFO, $VHD_INFO, $Update_WIMBOOT, $Make_Boot, $VHD_TYPE, $VHDX, $ComboSize, $wimlib_dism
-Global $WIM_FileSelect, $WIM_File, $WIM_Size_Label, $VHD_File, $VHD_FileSelect, $VHD_Size_Label
+Global $WIM_FileSelect, $WIM_File, $WIM_Size_Label, $VHD_File, $VHD_FileSelect, $VHD_Size_Label, $Keep_Mounted, $Fix_USB
 Global $TargetSel, $Target, $TargetSize, $TargetFree,  $WinDrv, $WinDrvSel, $WinDrvSize, $WinDrvFree
 ; Setting Other variables
 Global $wimfile="", $WIM_Size=0, $vhdfile="", $VHDSize=0, $wimfolder = "", $vhdfolder = "", $VHDSpaceAvail=0, $VHD_Overflow=0
@@ -64,12 +64,16 @@ Global $WinDrvDrive="", $WinDrvSpaceAvail=0, $FSvar_WinDrvDrive="", $DriveSysTyp
 
 Global $inst_disk="", $inst_part="", $sys_disk="", $sys_part="", $usbsys=0, $usbfix=0
 
-Global $driver_flag=0, $vhdmp=0, $SysWOW64=0, $WinFol="\Windows", $winload_flag=0, $PE_flag = 0
+Global $driver_flag=0, $vhdmp=0, $SysWOW64=0, $WinFol="\Windows", $winload_flag=0, $PE_flag = 0, $w78_flag = 0, $x_wofadk = 0
 Global $bcdedit="", $winload = "winload.exe", $bcd_guid_outfile = "makebt\bs_temp\bcd_boot_vhd.txt", $store = "", $DistLang = "en-US", $WinLang = "en-US", $bcdboot_flag = 0
 Global $tmpdrive = "", $PSize = "1.5 GB", $vhd_size="1500", $vhd_name = "W10x64_US_", $vhdfile_name ="W10x64_US_X.vhd", $vhdfile_name_only = ""
 
-Global $str = "", $bt_files[13] = ["\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Linux.lst", "\makebt\menu_Win_ISO.lst", "\makebt\grldr.mbr", "\makebt\listusbdrives\ListUsbDrives.exe", _
-"\makebt\WimBootCompress.ini", "\makebt\WimBootCompress-Normal.ini", "\wimlib_x64\wimlib-imagex.exe", "\wimlib_x64\wiminfo.cmd", "\wimlib_x86\wimlib-imagex.exe", "\wimlib_x86\wiminfo.cmd", "\makebt\grub.exe"]
+Global $str = "", $bt_files[22] = ["\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Linux.lst", "\makebt\menu_Win_ISO.lst", "\makebt\grldr.mbr", "\makebt\listusbdrives\ListUsbDrives.exe", _
+"\makebt\WimBootCompress.ini", "\makebt\WimBootCompress-Normal.ini", "\wimlib_x64\wimlib-imagex.exe", "\wimlib_x64\wiminfo.cmd", "\wimlib_x86\wimlib-imagex.exe", "\wimlib_x86\wiminfo.cmd", "\makebt\grub.exe", _
+"\makebt\registry_tweaks\HKLM_systemdst_USB_W7.reg", "\makebt\registry_tweaks\HKLM_softwaredst_Add.reg", _
+"\makebt\UsbBootWatcher\x86\UsbBootWatcher.exe", "\makebt\UsbBootWatcher\x86\UsbBootWatcher.conf", _
+"\makebt\UsbBootWatcher\amd64\UsbBootWatcher.exe", "\makebt\UsbBootWatcher\amd64\UsbBootWatcher.conf", _
+"\makebt\registry_tweaks\HKLM_systemdst_Add_W7.reg", "\makebt\registry_tweaks\HKLM_systemdst_Add_W8.reg", "\makebt\registry_tweaks\HKLM_softwaredst_Add_W8.reg"]
 
 Global $config_file_wimboot=@ScriptDir & "\makebt\WimBootCompress.ini"
 Global $config_file_normal=@ScriptDir & "\makebt\WimBootCompress-Normal.ini"
@@ -155,7 +159,7 @@ SystemFileRedirect("Off")
 $hGuiParent = GUICreate(" VHD_WIMBOOT x64 - APPLY WIM to VHD file - wimlib", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
-GUICtrlCreateGroup("System Files - Version 3.4  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 235)
+GUICtrlCreateGroup("System Files - Version 3.5  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 331)
 
 GUICtrlCreateLabel( "  WIM File", 32, 29)
 $WIM_Size_Label = GUICtrlCreateLabel( "", 130, 29, 60, 15, $ES_READONLY)
@@ -180,11 +184,11 @@ GUICtrlSetOnEvent($CAPTURE, "_CAPTURE_VHD_ToWIM")
 GUICtrlSetTip($CAPTURE, " Capture WIM Image File from VHD File " & @CRLF _
 & " Switch Windows Defender Off for Faster Capture ")
 
-$WIM_INFO = GUICtrlCreateButton("WIM Info", 285, 40, 70, 27)
+$WIM_INFO = GUICtrlCreateButton("WIM Info", 295, 40, 70, 27)
 GUICtrlSetOnEvent($WIM_INFO, "_WIM_INFO")
 GUICtrlSetTip($WIM_INFO, " Displays Info from WIM Image File ")
 
-$VHD_INFO = GUICtrlCreateButton("VHD Info", 285, 120, 70, 27)
+$VHD_INFO = GUICtrlCreateButton("VHD Info", 295, 120, 70, 27)
 GUICtrlSetOnEvent($VHD_INFO, "_VHD_INFO")
 GUICtrlSetTip($VHD_INFO, " Displays Info of WIM File connected to VHD File ")
 
@@ -205,8 +209,6 @@ GUICtrlCreateLabel( "Mode", 221, 124, 38, 15)
 GUICtrlSetTip($Combo_Capture_Mode, " Capture WIM File in Normal Mode Or WimBoot Mode " & @CRLF _
 & " with XPRESS4K  8K  16K  Or LZX Compression ")
 
-GUICtrlCreateGroup("Target", 18, 252, 364, 89)
-
 GUICtrlCreateLabel( "Boot Drive", 32, 273)
 $Target = GUICtrlCreateInput($TargetSel, 110, 270, 95, 20, $ES_READONLY)
 $TargetSel = GUICtrlCreateButton("...", 211, 271, 26, 18)
@@ -216,6 +218,8 @@ GUICtrlSetTip(-1, " Select your Boot Drive - Active for Boot Files - UEFI needs 
 GUICtrlSetOnEvent($TargetSel, "_target_drive")
 $TargetSize = GUICtrlCreateLabel( "", 253, 264, 100, 15, $ES_READONLY)
 $TargetFree = GUICtrlCreateLabel( "", 253, 281, 100, 15, $ES_READONLY)
+
+GUICtrlCreateLabel( "Target", 32, 294)
 
 GUICtrlCreateLabel( "System Drive ", 32, 315)
 $WinDrv = GUICtrlCreateInput("", 110, 312, 95, 20, $ES_READONLY)
@@ -228,21 +232,21 @@ GUICtrlSetOnEvent($WinDrvSel, "_WinDrv_drive")
 $WinDrvSize = GUICtrlCreateLabel( "", 253, 306, 100, 15, $ES_READONLY)
 $WinDrvFree = GUICtrlCreateLabel( "", 253, 323, 100, 15, $ES_READONLY)
 
-GUICtrlCreateLabel( "VHD Size", 290, 158)
-$ComboSize = GUICtrlCreateCombo("", 285, 174, 70, 24, $CBS_DROPDOWNLIST)
+GUICtrlCreateLabel( "VHD Size", 300, 158)
+$ComboSize = GUICtrlCreateCombo("", 295, 174, 70, 24, $CBS_DROPDOWNLIST)
 GUICtrlSetTip(-1, " Create New VHD File on NTFS System Drive " & @CRLF _
 & " FILEDISK 25 GB - Free Space for New Drivers and Windows Update " & @CRLF _
 & " RAMDISK 3.9 GB - Preferred is Half of RAM Size - No Update ")
 GUICtrlSetData($ComboSize,"1.0 GB|1.5 GB|2.0 GB|2.5 GB|3.0 GB|3.5 GB|3.9 GB|5.0 GB|6.0 GB|7.0 GB|10.0 GB|15.0 GB|25.0 GB|50.0 GB|100.0 GB", "25.0 GB")
 
-$VHD_TYPE = GUICtrlCreateCombo("", 285, 210, 0, 24, $CBS_DROPDOWNLIST)
+$VHD_TYPE = GUICtrlCreateCombo("", 305, 210, 60, 24, $CBS_DROPDOWNLIST)
 GUICtrlSetTip($VHD_TYPE, " Select VHD Type Fixed Or Expandable " & @CRLF _
 & " Fixed preferred to Prevent Fragmentation of FILEDISK " & @CRLF _
 & " Expandable preferred for Fast Loading into RAMDISK  " & @CRLF _
 & " Expandable is Created Faster ")
 GUICtrlSetData($VHD_TYPE,"FIXED|Expand", "FIXED")
 
-$VHDX = GUICtrlCreateCombo("", 207, 210, 60, 24, $CBS_DROPDOWNLIST)
+$VHDX = GUICtrlCreateCombo("", 230, 210, 60, 24, $CBS_DROPDOWNLIST)
 GUICtrlSetTip($VHDX, " Select VHD Or VHDX File Type" & @CRLF _
 & " VHDX can be used Only as FILEDISK " & @CRLF _
 & " VHDX Not Compatible with Windows 7 Operating System " & @CRLF _
@@ -250,15 +254,26 @@ GUICtrlSetTip($VHDX, " Select VHD Or VHDX File Type" & @CRLF _
 GUICtrlSetData($VHDX,"VHD|VHDX", "VHD")
 GUICtrlSetOnEvent($VHDX, "_prevhd")
 
-$DISK_TYPE = GUICtrlCreateCombo("", 114, 210, 75, 24, $CBS_DROPDOWNLIST)
+$DISK_TYPE = GUICtrlCreateCombo("", 140, 210, 75, 24, $CBS_DROPDOWNLIST)
 GUICtrlSetData($DISK_TYPE,"FILEDISK|RAMDISK", "FILEDISK")
-GUICtrlCreateLabel( "Preset", 75, 212, 38, 15)
+; GUICtrlCreateLabel( "Preset", 75, 212, 38, 15)
 GUICtrlSetTip($DISK_TYPE, " Preset for Creating New VHD Files - Select FILEDISK Or RAMDISK " & @CRLF _
 & " FILEDISK - Apply with Compact LZX mode in Fixed VHD 25 GB " & @CRLF _
 & " FILEDISK - booting with Boot Manager Menu and MS Driver " & @CRLF _
 & " RAMDISK - Apply with WimBoot mode in Expandable VHD 3.9 GB " & @CRLF _
 & " RAMDISK - booting with Grub4dos Menu and SVBus Driver ")
 GUICtrlSetOnEvent($DISK_TYPE, "_preset")
+
+$Keep_Mounted = GUICtrlCreateCheckbox("", 32, 210, 17, 17)
+GUICtrlSetTip($Keep_Mounted, " Keep VHD Mounted " & @CRLF _
+& " useful after Apply to Continue with Win_Reduce_Trusted ")
+GUICtrlCreateLabel( "Keep Mounted", 54, 212)
+
+$Fix_USB = GUICtrlCreateCheckbox("", 32, 235, 17, 17)
+GUICtrlSetTip($Fix_USB, " USB Fix for booting Windows 7/8 as FILEDISK" & @CRLF _
+& " Add UsbBootWatcher to Enable Booting from USB " & @CRLF _
+& " Not needed in all cases of Win 10 Or 7/8 RAMDISK ")
+GUICtrlCreateLabel( "USB Fix 7/8", 54, 237)
 
 $EXIT = GUICtrlCreateButton("EXIT", 320, 360, 60, 30)
 GUICtrlSetOnEvent($EXIT, "_Quit")
@@ -288,6 +303,8 @@ GUICtrlSetState($ComboSize, $GUI_DISABLE)
 GUICtrlSetState($VHD_TYPE, $GUI_DISABLE)
 GUICtrlSetState($VHDX, $GUI_DISABLE)
 GUICtrlSetState($DISK_TYPE, $GUI_DISABLE)
+GUICtrlSetState($Keep_Mounted, $GUI_UNCHECKED + $GUI_DISABLE)
+GUICtrlSetState($Fix_USB, $GUI_UNCHECKED + $GUI_DISABLE)
 GUICtrlSetState($WIM_FileSelect, $GUI_DISABLE)
 GUICtrlSetState($VHD_FileSelect, $GUI_DISABLE)
 GUICtrlSetState($TargetSel, $GUI_DISABLE)
@@ -312,9 +329,13 @@ Func CheckGo()
  	If $wimfile <> "" And $WIM_Path <> "" Then
  		GUICtrlSetState($APPLY, $GUI_ENABLE)
 		GUICtrlSetState($Combo_Apply_Mode, $GUI_ENABLE)
+		GUICtrlSetState($Keep_Mounted, $GUI_ENABLE)
+		GUICtrlSetState($Fix_USB, $GUI_ENABLE)
 	Else
   		GUICtrlSetState($APPLY, $GUI_DISABLE)
 		GUICtrlSetState($Combo_Apply_Mode, $GUI_DISABLE)
+		GUICtrlSetState($Keep_Mounted, $GUI_UNCHECKED + $GUI_DISABLE)
+		GUICtrlSetState($Fix_USB, $GUI_UNCHECKED + $GUI_DISABLE)
 	EndIf
  	If $TargetDrive <> "" And $vhdfile <> "" And $WIM_Path <> "" And FileExists($vhdfile) Then
 		GUICtrlSetState($Make_Boot, $GUI_ENABLE)
@@ -1865,6 +1886,20 @@ Func _APPLY_WIM_ToVHD()
 	GUICtrlSetData($ProgressAll, 30)
 
 	sleep(2000)
+	; In case of W7 Or W8
+	If Not FileExists($tmpdrive & $WinFol & "\ImmersiveControlPanel") Or Not FileExists($tmpdrive & $WinFol & "\SystemApps") Then
+		$w78_flag = 1
+		If GUICtrlRead($Fix_USB) = $GUI_CHECKED Then
+			_GUICtrlStatusBar_SetText($hStatus," Update of 7/8 Registry in Drive " & $tmpdrive, 0)
+			_W7_Update()
+		EndIf
+		If Not FileExists($tmpdrive & $WinFol & "\System32\drivers\wofadk.sys") Then
+			$x_wofadk = 1
+		EndIf
+	Else
+		; In case W10 then USB Fix Not needed
+		GUICtrlSetState($Fix_USB, $GUI_UNCHECKED + $GUI_DISABLE)
+	EndIf
 
 	$VHDSpaceAvail = Round(DriveSpaceFree($tmpdrive))
 	If $VHDSpaceAvail < 300 Then
@@ -1915,11 +1950,13 @@ Func _APPLY_WIM_ToVHD()
 	EndIf
 
 	If $TargetDrive = "" Then
-		_GUICtrlStatusBar_SetText($hStatus," Detach VHD " & $vhdfile_name, 0)
-		GUICtrlSetData($ProgressAll, 70)
-		$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
-		If $val <> 0 Then
-			MsgBox(48, " Error DiskPart", " Detach Dest VHD - DiskPart Error = " & $val, 0)
+		If GUICtrlRead($Keep_Mounted) = $GUI_UNCHECKED Or $VHD_Overflow = 1 Or $winload_flag = 0 Then
+			_GUICtrlStatusBar_SetText($hStatus," Detach VHD " & $vhdfile_name, 0)
+			GUICtrlSetData($ProgressAll, 70)
+			$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
+			If $val <> 0 Then
+				MsgBox(48, " Error DiskPart", " Detach Dest VHD - DiskPart Error = " & $val, 0)
+			EndIf
 		EndIf
 
 		SystemFileRedirect("Off")
@@ -1927,6 +1964,19 @@ Func _APPLY_WIM_ToVHD()
 		sleep(2000)
 		GUICtrlSetData($ProgressAll, 100)
 		_GUICtrlStatusBar_SetText($hStatus," End of Program ", 0)
+
+		If $w78_flag = 1 And $x_wofadk = 1 And GUICtrlRead($Combo_Apply_Mode) <> "Normal" Then
+			MsgBox(48, "WARNING - WOFADK Driver Missing in Windows 7 /8 ", " wofadk.sys driver is needed for Windows 7/8 Compact " & @CRLF _
+			& @CRLF & " use WinNTSetup mode Compact:NONE " & @CRLF _
+			& @CRLF & " to Install wofadk.sys driver in Windows 7/8 " & @CRLF _
+			& @CRLF & " Or better use Windows 10 which contains wof.sys driver ")
+		EndIf
+
+		If $w78_flag = 1 And GUICtrlRead($Combo_Apply_Mode) <> "Normal" Then
+			MsgBox(48, " WARNING Windows 7/8", " Win 7/8 VHD on USB booting as FILEDISK" & @CRLF _
+			& @CRLF & " requires Normal as Apply Mode for USB drivers " & @CRLF _
+			& @CRLF & " Apply Mode Compact can be used for RAMDISK only ", 0)
+		EndIf
 
 	 	If $VHD_Overflow = 0 And $winload_flag = 1 Then
 	 		MsgBox(64, " END OF PROGRAM - OK ", " End of Program  - OK " & @CRLF _
@@ -1945,18 +1995,24 @@ Func _APPLY_WIM_ToVHD()
 		_GUICtrlStatusBar_SetText($hStatus," Select Preset Or VHD for APPLY Or Select Exit ", 0)
 		GUICtrlSetData($ProgressAll, 0)
 		DisableMenus(0)
-		Return
+		If GUICtrlRead($Keep_Mounted) = $GUI_UNCHECKED Or $VHD_Overflow = 1 Or $winload_flag = 0 Then
+			Return
+		Else
+			Exit
+		EndIf
 	EndIf
 
 	If $TargetDrive <> "" And $VHD_Overflow = 0 And $winload_flag = 1 Then
 		_Boot_Entries()
 	EndIf
 
-	_GUICtrlStatusBar_SetText($hStatus," Detach VHD " & $vhdfile_name, 0)
-	GUICtrlSetData($ProgressAll, 70)
-	$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
-	If $val <> 0 Then
-		MsgBox(48, " Error DiskPart", " Detach VHD - DiskPart Error = " & $val, 0)
+	If GUICtrlRead($Keep_Mounted) = $GUI_UNCHECKED Or $VHD_Overflow = 1 Or $winload_flag = 0 Then
+		_GUICtrlStatusBar_SetText($hStatus," Detach VHD " & $vhdfile_name, 0)
+		GUICtrlSetData($ProgressAll, 70)
+		$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
+		If $val <> 0 Then
+			MsgBox(48, " Error DiskPart", " Detach VHD - DiskPart Error = " & $val, 0)
+		EndIf
 	EndIf
 
 	SystemFileRedirect("Off")
@@ -1964,6 +2020,19 @@ Func _APPLY_WIM_ToVHD()
 	sleep(2000)
 	GUICtrlSetData($ProgressAll, 100)
 	_GUICtrlStatusBar_SetText($hStatus," End of Program ", 0)
+
+	If $w78_flag = 1 And $x_wofadk = 1 And GUICtrlRead($Combo_Apply_Mode) <> "Normal" Then
+		MsgBox(48, "WARNING - WOFADK Driver Missing in Windows 7 /8 ", " wofadk.sys driver is needed for Windows 7/8 Compact " & @CRLF _
+		& @CRLF & " use WinNTSetup mode Compact:NONE " & @CRLF _
+		& @CRLF & " to Install wofadk.sys driver in Windows 7/8 " & @CRLF _
+		& @CRLF & " Or better use Windows 10 which contains wof.sys driver ")
+	EndIf
+
+	If $w78_flag = 1 And GUICtrlRead($Combo_Apply_Mode) <> "Normal" Then
+		MsgBox(48, " WARNING Windows 7/8", " Win 7/8 VHD on USB booting as FILEDISK" & @CRLF _
+		& @CRLF & " requires Normal as Apply Mode for USB drivers " & @CRLF _
+		& @CRLF & " Apply Mode Compact can be used for RAMDISK only ", 0)
+	EndIf
 
 	If $VHD_Overflow = 0 And $winload_flag = 1 Then
 		MsgBox(64, " END OF PROGRAM - OK ", " End of Program  - OK " & @CRLF _
@@ -1985,10 +2054,54 @@ Func _APPLY_WIM_ToVHD()
 	_GUICtrlStatusBar_SetText($hStatus," Select Preset Or VHD for APPLY Or Select Exit ", 0)
 	GUICtrlSetData($ProgressAll, 0)
 	DisableMenus(0)
-	Return
+	If GUICtrlRead($Keep_Mounted) = $GUI_UNCHECKED Or $VHD_Overflow = 1 Or $winload_flag = 0 Then
+		Return
+	Else
+		Exit
+	EndIf
 
 	; Exit
 EndFunc   ;==> _APPLY_WIM_ToVHD
+;===================================================================================================
+Func _W7_Update()
+
+	If FileExists($tmpdrive & $WinFol & "\SysWOW64") Then
+		FileCopy(@ScriptDir & "\makebt\UsbBootWatcher\amd64\UsbBootWatcher.exe", $tmpdrive & $WinFol & "\system32\", 1)
+		FileCopy(@ScriptDir & "\makebt\UsbBootWatcher\amd64\UsbBootWatcher.conf", $tmpdrive & $WinFol & "\system32\", 1)
+	Else
+		FileCopy(@ScriptDir & "\makebt\UsbBootWatcher\x86\UsbBootWatcher.exe", $tmpdrive & $WinFol & "\system32\", 1)
+		FileCopy(@ScriptDir & "\makebt\UsbBootWatcher\x86\UsbBootWatcher.conf", $tmpdrive & $WinFol & "\system32\", 1)
+	EndIf
+
+	RunWait(@ComSpec & " /c reg load HKLM\systemdst " & $tmpdrive & $WinFol & "\System32\config\SYSTEM", @ScriptDir, @SW_HIDE)
+	RunWait(@ComSpec & " /c reg load HKLM\softwaredst " & $tmpdrive & $WinFol & "\System32\config\SOFTWARE", @ScriptDir, @SW_HIDE)
+
+	; in case of W7
+	If Not FileExists($tmpdrive & $WinFol & "\ImmersiveControlPanel") Then
+		RunWait(@ComSpec & " /c reg import makebt\registry_tweaks\HKLM_systemdst_USB_W7.reg", @ScriptDir, @SW_HIDE)
+		RunWait(@ComSpec & " /c reg import makebt\registry_tweaks\HKLM_systemdst_Add_W7.reg", @ScriptDir, @SW_HIDE)
+		RunWait(@ComSpec & " /c reg import makebt\registry_tweaks\HKLM_softwaredst_Add.reg", @ScriptDir, @SW_HIDE)
+	Else
+		; in case of W8
+		RunWait(@ComSpec & " /c reg import makebt\registry_tweaks\HKLM_systemdst_Add_W8.reg", @ScriptDir, @SW_HIDE)
+		RunWait(@ComSpec & " /c reg import makebt\registry_tweaks\HKLM_softwaredst_Add_W8.reg", @ScriptDir, @SW_HIDE)
+	EndIf
+
+	Sleep(500)
+	RunWait(@ComSpec & " /c reg unload HKLM\systemdst", @ScriptDir, @SW_HIDE)
+	RunWait(@ComSpec & " /c reg unload HKLM\softwaredst", @ScriptDir, @SW_HIDE)
+	Sleep(1000)
+
+;~ 		If FileExists($tmpdrive & $WinFol & "\system32\drivers\svbusx86.sys") Then RunWait(@ComSpec & " /c compact.exe /u " & $tmpdrive & $WinFol & "\system32\drivers\svbusx86.sys", @ScriptDir, @SW_HIDE)
+;~ 		If FileExists($tmpdrive & $WinFol & "\system32\drivers\svbusx64.sys") Then RunWait(@ComSpec & " /c compact.exe /u " & $tmpdrive & $WinFol & "\system32\drivers\svbusx64.sys", @ScriptDir, @SW_HIDE)
+;~ 		If FileExists($tmpdrive & $WinFol & "\system32\drivers\wvblk32.sys") Then RunWait(@ComSpec & " /c compact.exe /u " & $tmpdrive & $WinFol & "\system32\drivers\wvblk32.sys", @ScriptDir, @SW_HIDE)
+;~ 		If FileExists($tmpdrive & $WinFol & "\system32\drivers\firadisk.sys") Then RunWait(@ComSpec & " /c compact.exe /u " & $tmpdrive & $WinFol & "\system32\drivers\firadisk.sys", @ScriptDir, @SW_HIDE)
+;~ 		; Only Win7
+;~ 		If Not FileExists($tmpdrive & $WinFol & "\ImmersiveControlPanel") Then
+;~ 			RunWait(@ComSpec & " /c compact.exe /u /S:" & $tmpdrive & $WinFol & "\system32\DriverStore", @ScriptDir, @SW_HIDE)
+;~ 		EndIf
+
+EndFunc   ;==> _W7_Update
 ;===================================================================================================
 Func _CAPTURE_VHD_ToWIM()
 
@@ -2122,7 +2235,7 @@ Func _CAPTURE_VHD_ToWIM()
 	$VHD_Size_Used = $VHD_Size_Total - $VHD_Size_Free
 
 	$WinDrvSpaceAvail = Round(DriveSpaceFree($WinDrvDrive))
-	If $WinDrvSpaceAvail - $VHD_Size_Used < 0 Or $WinDrvSpaceAvail < 4000 Then
+	If $WinDrvSpaceAvail - $VHD_Size_Used < 0 Then
 		_GUICtrlStatusBar_SetText($hStatus," Detach VHD " & $vhdfile_name, 0)
 		GUICtrlSetData($ProgressAll, 70)
 		$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
@@ -2645,26 +2758,26 @@ Func _Boot_Entries()
 		EndIf
 
 		If $DriveSysType="Removable" Or $usbsys Then
-;~ 				If $FSvar_WinDrvDrive="NTFS" Then
-;~ 					FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,0)/" & $entry_image_file & "] (hd0,0)/" & $entry_image_file & " - SVBus  FILEDISK - " & $PSize & " - map as (hd-1) for WIMBOOT")
-;~ 					; FileWriteLine($TargetDrive & "\menu.lst", "find --set-root --ignore-floppies /" & $entry_image_file)
-;~ 					FileWriteLine($TargetDrive & "\menu.lst", "map (hd0,0)/" & $entry_image_file & " (hd-1)")
-;~ 					FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
-;~ 					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
-;~ 					FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
-;~ 				EndIf
+			If $FSvar_WinDrvDrive="NTFS" Then
+				FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,0)/" & $entry_image_file & "] (hd0,0)/" & $entry_image_file & " - SVBus  FILEDISK - " & $PSize & " - map as (hd-1) for WIMBOOT")
+				; FileWriteLine($TargetDrive & "\menu.lst", "find --set-root --ignore-floppies /" & $entry_image_file)
+				FileWriteLine($TargetDrive & "\menu.lst", "map (hd0,0)/" & $entry_image_file & " (hd-1)")
+				FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
+				FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+				FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
+			EndIf
 			FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,0)/" & $entry_image_file & "] (hd0,0)/" & $entry_image_file & " - SVBus  RAMDISK  - " & $PSize & " - map as (hd-1) for WIMBOOT")
 			FileWriteLine($TargetDrive & "\menu.lst", "map --top --mem (hd0,0)/" & $entry_image_file & " (hd-1)")
 			FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
 			FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
 			FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
-;~ 				If $FSvar_WinDrvDrive="NTFS" Then
-;~ 					FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,1)/" & $entry_image_file & "] (hd0,1)/" & $entry_image_file & " - SVBus  FILEDISK - " & $PSize & " - map as (hd-1) for WIMBOOT")
-;~ 					FileWriteLine($TargetDrive & "\menu.lst", "map (hd0,1)/" & $entry_image_file & " (hd-1)")
-;~ 					FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
-;~ 					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
-;~ 					FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
-;~ 				EndIf
+			If $FSvar_WinDrvDrive="NTFS" Then
+				FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,1)/" & $entry_image_file & "] (hd0,1)/" & $entry_image_file & " - SVBus  FILEDISK - " & $PSize & " - map as (hd-1) for WIMBOOT")
+				FileWriteLine($TargetDrive & "\menu.lst", "map (hd0,1)/" & $entry_image_file & " (hd-1)")
+				FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
+				FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+				FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
+			EndIf
 			FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,1)/" & $entry_image_file & "] (hd0,1)/" & $entry_image_file & " - SVBus  RAMDISK  - " & $PSize & " - map as (hd-1) for WIMBOOT")
 			; FileWriteLine($TargetDrive & "\menu.lst", "find --set-root --ignore-floppies /" & $entry_image_file)
 			FileWriteLine($TargetDrive & "\menu.lst", "map --top --mem (hd0,1)/" & $entry_image_file & " (hd-1)")
@@ -2672,14 +2785,14 @@ Func _Boot_Entries()
 			FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
 			FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
 		Else
-;~ 				If $FSvar_WinDrvDrive="NTFS" Then
-;~ 					FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "title " & $entry_image_file & " - SVBus  FILEDISK - " & $PSize & " - map as (hd) for WIMBOOT")
-;~ 					FileWriteLine($TargetDrive & "\menu.lst", "find --set-root --ignore-floppies /" & $entry_image_file)
-;~ 					FileWriteLine($TargetDrive & "\menu.lst", "map /" & $entry_image_file & " (hd)")
-;~ 					FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
-;~ 					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
-;~ 					FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
-;~ 				EndIf
+			If $FSvar_WinDrvDrive="NTFS" Then
+				FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "title " & $entry_image_file & " - SVBus  FILEDISK - " & $PSize & " - map as (hd) for WIMBOOT")
+				FileWriteLine($TargetDrive & "\menu.lst", "find --set-root --ignore-floppies /" & $entry_image_file)
+				FileWriteLine($TargetDrive & "\menu.lst", "map /" & $entry_image_file & " (hd)")
+				FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
+				FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+				FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
+			EndIf
 			FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "title " & $entry_image_file & " - SVBus  RAMDISK  - " & $PSize & " - map as (hd) for WIMBOOT")
 			FileWriteLine($TargetDrive & "\menu.lst", "find --set-root --ignore-floppies /" & $entry_image_file)
 			FileWriteLine($TargetDrive & "\menu.lst", "map --top --mem /" & $entry_image_file & " (hd)")
@@ -3024,6 +3137,8 @@ Func DisableMenus($endis)
 		GUICtrlSetState($VHD_TYPE, $GUI_DISABLE)
 		GUICtrlSetState($VHDX, $GUI_DISABLE)
 		GUICtrlSetState($DISK_TYPE, $GUI_DISABLE)
+		GUICtrlSetState($Keep_Mounted, $GUI_UNCHECKED + $GUI_DISABLE)
+		GUICtrlSetState($Fix_USB, $GUI_UNCHECKED + $GUI_DISABLE)
 		GUICtrlSetState($TargetSel, $GUI_DISABLE)
 		GUICtrlSetState($Target, $GUI_DISABLE)
 		GUICtrlSetState($Combo_Capture_Mode, $GUI_DISABLE)
@@ -3048,6 +3163,8 @@ Func DisableMenus($endis)
 	GUICtrlSetState($Make_Boot, $GUI_DISABLE)
 	GUICtrlSetState($APPLY, $GUI_DISABLE)
 	GUICtrlSetState($CAPTURE, $GUI_DISABLE)
+	GUICtrlSetState($Keep_Mounted, $GUI_DISABLE)
+	GUICtrlSetState($Fix_USB, $GUI_DISABLE)
 EndFunc ;==>DisableMenus
 ;===================================================================================================
 Func _DetectLang()
