@@ -3,9 +3,9 @@
 
  AutoIt Version: 3.3.14.5 + put file SciTEUser.properties in your UserProfile e.g. C:\Users\User-10
 
- Author:        WIMB  -  November 18, 2020
+ Author:        WIMB  -  November 21, 2020
 
- Program:       VHD_WIMBOOT_x64.exe - Version 3.5 in rule 162
+ Program:       VHD_WIMBOOT_x64.exe - Version 3.7 in rule 162
 
  Script Function:
 
@@ -159,7 +159,7 @@ SystemFileRedirect("Off")
 $hGuiParent = GUICreate(" VHD_WIMBOOT x64 - APPLY WIM to VHD file - wimlib", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
-GUICtrlCreateGroup("System Files - Version 3.5  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 331)
+GUICtrlCreateGroup("System Files - Version 3.7  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 331)
 
 GUICtrlCreateLabel( "  WIM File", 32, 29)
 $WIM_Size_Label = GUICtrlCreateLabel( "", 130, 29, 60, 15, $ES_READONLY)
@@ -1886,6 +1886,7 @@ Func _APPLY_WIM_ToVHD()
 	GUICtrlSetData($ProgressAll, 30)
 
 	sleep(2000)
+
 	; In case of W7 Or W8
 	If Not FileExists($tmpdrive & $WinFol & "\ImmersiveControlPanel") Or Not FileExists($tmpdrive & $WinFol & "\SystemApps") Then
 		$w78_flag = 1
@@ -1972,12 +1973,6 @@ Func _APPLY_WIM_ToVHD()
 			& @CRLF & " Or better use Windows 10 which contains wof.sys driver ")
 		EndIf
 
-		If $w78_flag = 1 And GUICtrlRead($Combo_Apply_Mode) <> "Normal" Then
-			MsgBox(48, " WARNING Windows 7/8", " Win 7/8 VHD on USB booting as FILEDISK" & @CRLF _
-			& @CRLF & " requires Normal as Apply Mode for USB drivers " & @CRLF _
-			& @CRLF & " Apply Mode Compact can be used for RAMDISK only ", 0)
-		EndIf
-
 	 	If $VHD_Overflow = 0 And $winload_flag = 1 Then
 	 		MsgBox(64, " END OF PROGRAM - OK ", " End of Program  - OK " & @CRLF _
 	 		& @CRLF & $vhdfile_name & " is on System Drive " & $WinDrvDrive)
@@ -2026,12 +2021,6 @@ Func _APPLY_WIM_ToVHD()
 		& @CRLF & " use WinNTSetup mode Compact:NONE " & @CRLF _
 		& @CRLF & " to Install wofadk.sys driver in Windows 7/8 " & @CRLF _
 		& @CRLF & " Or better use Windows 10 which contains wof.sys driver ")
-	EndIf
-
-	If $w78_flag = 1 And GUICtrlRead($Combo_Apply_Mode) <> "Normal" Then
-		MsgBox(48, " WARNING Windows 7/8", " Win 7/8 VHD on USB booting as FILEDISK" & @CRLF _
-		& @CRLF & " requires Normal as Apply Mode for USB drivers " & @CRLF _
-		& @CRLF & " Apply Mode Compact can be used for RAMDISK only ", 0)
 	EndIf
 
 	If $VHD_Overflow = 0 And $winload_flag = 1 Then
