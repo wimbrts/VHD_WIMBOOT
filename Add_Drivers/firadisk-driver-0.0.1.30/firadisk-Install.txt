@@ -1,0 +1,15 @@
+Install FiraDisk driver with R-mouse on firadisk.inf in makebt\firadisk-driver- folder
+The 64-bit FiraDisk driver requires to boot with testsigning switched on
+
+Open Command Prompt as Administrator:
+CODE
+bcdedit /set testsigning on
+
+Reboot to activate testsigning - Info http://msdn.microsoft.com/en-us/library/ff553484.aspx
+
+Then in Windows Explorer folder makebt\firadisk-driver-0.0.1.30
+Install FiraDisk driver via Right click on firadisk.inf and Select Install
+
+Install FiraDisk from command window is also possible via
+
+RUNDLL32.EXE SETUPAPI.DLL,InstallHinfSection DefaultInstall 132 H:\firadisk\firadisk.inf

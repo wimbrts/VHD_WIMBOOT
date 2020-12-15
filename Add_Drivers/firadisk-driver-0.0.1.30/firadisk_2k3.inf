@@ -1,0 +1,99 @@
+[Version]
+Signature="$WINDOWS NT$"
+Class=SCSIAdapter
+ClassGuid={4d36e97b-e325-11ce-bfc1-08002be10318} 
+Provider=%Provider%
+DriverVer=2/18/2011,0.0.1.30
+CatalogFile.NTx86=firadisk.cat
+CatalogFile.NTamd64=firadi64.cat
+
+
+[DestinationDirs]
+DefaultDestDir=12
+
+[SourceDisksNames]
+1=%DiskName1%,,,""
+
+[SourceDisksFiles.x86]
+firadisk.inf=1
+firadisk.sys=1
+
+[SourceDisksFiles.amd64]
+firadisk.inf=1
+firadi64.sys=1
+
+
+[Manufacturer]
+%MfaKaryonix%=MfaKaryonix,NTx86,NTamd64
+
+[MfaKaryonix]
+
+[MfaKaryonix.NTx86]
+%FiraDiskDevice%=FiraDiskDevice, root\firadisk, detected\firadisk
+
+[MfaKaryonix.NTamd64]
+%FiraDiskDevice%=FiraDiskDevice, root\firadisk, detected\firadisk
+
+
+[FiraDiskDevice.NTx86]
+CopyFiles=CopyFilesFiraDisk_x86
+
+[FiraDiskDevice.NTamd64]
+CopyFiles=CopyFilesFiraDisk_amd64
+
+[FiraDiskDevice.NTx86.Services]
+AddService = FiraDisk, 2, AddServiceFiraDisk
+
+[FiraDiskDevice.NTamd64.Services]
+AddService = FiraDisk, 2, AddServiceFiraDisk
+
+
+[DefaultInstall.NTx86]
+CopyFiles=CopyFilesFiraDisk_x86
+CopyINF=firadisk.inf
+
+[DefaultInstall.NTamd64]
+CopyFiles=CopyFilesFiraDisk_amd64
+CopyINF=firadisk.inf
+
+[DefaultInstall.NTx86.Services]
+AddService = FiraDisk, 0, AddServiceFiraDiskNoPnP
+
+[DefaultInstall.NTamd64.Services]
+AddService = FiraDisk, 0, AddServiceFiraDiskNoPnP
+
+
+[CopyFilesFiraDisk_x86]
+firadisk.sys
+
+[CopyFilesFiraDisk_amd64]
+firadisk.sys,firadi64.sys
+
+
+[AddServiceFiraDiskNoPnP]
+DisplayName    = %FiraDiskService%
+ServiceType    = 1
+StartType      = 0
+ErrorControl   = 1
+ServiceBinary  = %12%\firadisk.sys
+LoadOrderGroup = Boot Bus Extender
+
+[AddServiceFiraDisk]
+DisplayName    = %FiraDiskService%
+ServiceType    = 1
+StartType      = 0
+ErrorControl   = 1
+ServiceBinary  = %12%\firadisk.sys
+LoadOrderGroup = Boot Bus Extender
+AddReg = AddRegServiceFiraDisk
+
+[AddRegServiceFiraDisk]
+HKR,Parameters,PnP,0x00010001,1
+
+
+[Strings]
+Provider = "Karyonix"
+MfaKaryonix = "Karyonix"
+FiraDiskDevice = "FiraDisk Virtual Disk Enumerator"
+FiraDiskService = "FiraDisk Driver"
+DiskName1 = "FiraDisk Installation Disk"
