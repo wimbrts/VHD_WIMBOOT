@@ -3,9 +3,9 @@
 
  AutoIt Version: 3.3.14.5 + put file SciTEUser.properties in your UserProfile e.g. C:\Users\User-10
 
- Author:        WIMB  -  December 15, 2020
+ Author:        WIMB  -  December 28, 2020
 
- Program:       VHD_WIMBOOT_x86.exe - Version 4.1 in rule 172
+ Program:       VHD_WIMBOOT_x86.exe - Version 4.3 in rule 173
 
  Script Function:
 
@@ -76,13 +76,14 @@ Global $driver_flag=0, $vhdmp=0, $SysWOW64=0, $WinFol="\Windows", $winload_flag=
 Global $bcdedit="", $winload = "winload.exe", $bcd_guid_outfile = "makebt\bs_temp\bcd_boot_vhd.txt", $store = "", $DistLang = "en-US", $WinLang = "en-US", $bcdboot_flag = 0
 Global $vhd_f32_drive = "", $tmpdrive = "", $PSize = "1.5 GB", $vhd_size="1500", $vhd_name = "W10x64_US_", $vhdfile_name ="W10x64_US_X.vhd", $vhdfile_name_only = ""
 
-Global $str = "", $bt_files[30] = ["\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Linux.lst", "\makebt\menu_Win_ISO.lst", "\makebt\grldr.mbr", "\makebt\listusbdrives\ListUsbDrives.exe", _
+Global $str = "", $bt_files[33] = ["\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Linux.lst", "\makebt\menu_Win_ISO.lst", "\makebt\grldr.mbr", "\makebt\listusbdrives\ListUsbDrives.exe", _
 "\makebt\WimBootCompress.ini", "\makebt\WimBootCompress-Normal.ini", "\wimlib_x64\wimlib-imagex.exe", "\wimlib_x64\wiminfo.cmd", "\wimlib_x86\wimlib-imagex.exe", "\wimlib_x86\wiminfo.cmd", "\makebt\grub.exe", _
 "\makebt\USB_78_Tweaks\TK_SOFTWARE_W7.reg", "\makebt\USB_78_Tweaks\TK_SYSTEM_W7.reg", _
 "\makebt\UsbBootWatcher\x86\UsbBootWatcher.exe", "\makebt\UsbBootWatcher\x86\UsbBootWatcher.conf", _
 "\makebt\UsbBootWatcher\amd64\UsbBootWatcher.exe", "\makebt\UsbBootWatcher\amd64\UsbBootWatcher.conf", _
+"\WofCompress\x64\WofCompress.exe", "\WofCompress\x86\WofCompress.exe", _
 "\makebt\USB_78_Tweaks\TK_SYSTEM_W8.reg", "\makebt\USB_78_Tweaks\TK_SOFTWARE_W8.reg", "\makebt\USB_78_Tweaks\Win78_USB3_Boot.ini", _
-"\UEFI_MAN\EFI\grub\menu.lst", "\UEFI_MAN\grub\grub.cfg", "\UEFI_MAN\grub\grub_Linux.cfg", "\UEFI_MAN\grub\core.img", _
+"\UEFI_MAN\EFI\grub\menu.lst", "\UEFI_MAN\grub\grub.cfg", "\UEFI_MAN\grub\grub_Linux.cfg", "\UEFI_MAN\grub\core.img", "\UEFI_MAN\EFI\grub\ntfs_x64.efi", _
 "\UEFI_MAN\EFI\Boot\bootx64_g4d.efi", "\UEFI_MAN\EFI\Boot\bootia32_g4d.efi", "\UEFI_MAN\EFI\Boot\grubx64_real.efi", "\UEFI_MAN\EFI\Boot\grubia32_real.efi"]
 
 Global $config_file_wimboot=@ScriptDir & "\makebt\WimBootCompress.ini"
@@ -169,7 +170,7 @@ SystemFileRedirect("Off")
 $hGuiParent = GUICreate(" VHD_WIMBOOT x86 - APPLY WIM to VHD file - wimlib", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
-GUICtrlCreateGroup("System Files - Version 4.1  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 331)
+GUICtrlCreateGroup("System Files - Version 4.3  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 331)
 
 GUICtrlCreateLabel( "  WIM File", 32, 29)
 $WIM_Size_Label = GUICtrlCreateLabel( "", 130, 29, 60, 15, $ES_READONLY)
@@ -1676,8 +1677,8 @@ Func _APPLY_WIM_ToVHD()
 			$Part12_flag = 1
 		EndIf
 
-		If GUICtrlRead($VHD_TYPE) <> "VHD    FIXED" Or $Part12_flag = 1 Then
-			$ikey = MsgBox(48+4+256, " New VHD Settings Not suitable ", " UEFI RAMDISK needs Fixed VHD MBR with 2 Partitions " & @CRLF & @CRLF & " Continue without changing VHD Settings ? ")
+		If GUICtrlRead($VHD_TYPE) <> "VHD    FIXED" Or GUICtrlRead($Part12) <> "MBR  2  Partitions" Then
+			$ikey = MsgBox(48+4+256, " New VHD Settings Not most compatible ", " UEFI RAMDISK best use Fixed VHD MBR with 2 Partitions " & @CRLF & @CRLF & " Continue without changing VHD Settings ? ")
 			If $ikey = 6 Then
 			Else
 				SystemFileRedirect("Off")
@@ -2119,9 +2120,9 @@ Func _APPLY_WIM_ToVHD()
 			EndIf
 			Sleep(1000)
 		EndIf
-		; Rename NTFS folder EFI and Boot as x-EFI and x-Boot needed to prevent boot_image)handle Not found in booting UEFI Grub4dos
-		If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-EFI", 1)
-		If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-Boot", 1)
+		; Rename NTFS folder EFI and Boot as x-EFI and x-Boot needed to prevent boot_image)handle Not found in booting UEFI Grub4dos - better UnCompress with WofCompress
+		; If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-EFI", 1)
+		; If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-Boot", 1)
 	EndIf
 
 	If $TargetDrive = "" Then
@@ -2809,7 +2810,7 @@ EndFunc ;==>  _BCD_Inside_Entry
 ;===================================================================================================
 Func _BCD_Inside_VHD()
 
-	Local $val=0
+	Local $val=0, $iPID
 
 	If FileExists(@WindowsDir & "\system32\bcdboot.exe") And Not FileExists($tmpdrive & "\Boot\BCD") Then
 		; in win8 x64 OS then Win8x64 bcdboot with option /f ALL must be used, otherwise entry is not made
@@ -2845,6 +2846,31 @@ Func _BCD_Inside_VHD()
 		_BCD_Inside_Entry()
 
 	EndIf
+
+	; UnCompress EFI folder inside VHD - needed for UEFI booting from RAMDISK of 1 Partition VHD - UEFI Grub2 and UEFI Grub4dos
+	If FileExists($tmpdrive & "\EFI") Then
+		_GUICtrlStatusBar_SetText($hStatus," WOF UnCompress of " & $tmpdrive & "\EFI" & " - wait .... ", 0)
+		Sleep(500)
+		If @OSArch = "X86" Then
+			$iPID = Run(@ComSpec & " /k WofCompress\x86\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\EFI" & '"', @ScriptDir, @SW_HIDE)
+		Else
+			$iPID = Run(@ComSpec & " /k WofCompress\x64\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\EFI" & '"', @ScriptDir, @SW_HIDE)
+		EndIf
+		ProcessWaitClose($iPID, 1)
+	EndIf
+
+	; UnCompress Boot folder inside VHD
+	If FileExists($tmpdrive & "\Boot") Then
+		_GUICtrlStatusBar_SetText($hStatus," WOF UnCompress of " & $tmpdrive & "\Boot" & " - wait .... ", 0)
+		Sleep(500)
+		If @OSArch = "X86" Then
+			$iPID = Run(@ComSpec & " /k WofCompress\x86\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\Boot" & '"', @ScriptDir, @SW_HIDE)
+		Else
+			$iPID = Run(@ComSpec & " /k WofCompress\x64\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\Boot" & '"', @ScriptDir, @SW_HIDE)
+		EndIf
+		ProcessWaitClose($iPID, 1)
+	EndIf
+
 EndFunc ;==>  _BCD_Inside_VHD
 ;===================================================================================================
 Func _BCD_BootDrive_VHD_Entry()
@@ -3054,9 +3080,13 @@ Func _Boot_Entries()
 		FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\grubia32_real.efi", $TargetDrive & "\EFI\Boot\", 9)
 	EndIf
 
+	If FileExists(@ScriptDir & "\UEFI_MAN\EFI\grub\ntfs_x64.efi") And Not FileExists($TargetDrive & "\EFI\grub\ntfs_x64.efi") Then
+		FileCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\ntfs_x64.efi", $TargetDrive & "\EFI\grub\ntfs_x64.efi", 9)
+	EndIf
+
 	; support UEFI Grub4dos
 	If Not FileExists($TargetDrive & "\EFI\grub\menu.lst") Then
-		FileCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\menu.lst", $TargetDrive & "\EFI\grub\", 9)
+		FileCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\menu.lst", $TargetDrive & "\EFI\grub\menu.lst", 9)
 	EndIf
 	If Not FileExists($TargetDrive & "\EFI\Boot\bootx64_g4d.efi") Then
 		FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\bootx64_g4d.efi", $TargetDrive & "\EFI\Boot\", 9)
@@ -3186,6 +3216,42 @@ Func _Boot_Entries()
 		If $driver_flag = 3 Or $driver_flag = 0 Then
 			_GUICtrlStatusBar_SetText($hStatus," Making UEFI Grub2 Menu on Target Boot Drive " & $TargetDrive, 0)
 			FileWriteLine($TargetDrive & "\grub\grub.cfg", @CRLF & "menuentry " & '"' & "Boot /" & $entry_image_file & " - UEFI Grub2  SVBus  RAMDISK  - " & $PSize & '"' & " {")
+			FileWriteLine($TargetDrive & "\grub\grub.cfg", "  search --file --set=vhd_drive --no-floppy /" & $entry_image_file)
+			FileWriteLine($TargetDrive & "\grub\grub.cfg", "  map --mem --rt ($vhd_drive)/" & $entry_image_file)
+			FileWriteLine($TargetDrive & "\grub\grub.cfg", "  boot")
+			FileWriteLine($TargetDrive & "\grub\grub.cfg", "}")
+		EndIf
+	EndIf
+
+	; UEFI booting from RAMDISK needs fixed vhd with 1 partition
+	If StringRight($vhdfile_name, 4) = ".vhd" And FileExists($TargetDrive & "\EFI\grub\menu.lst") And $Part12_flag = 1 And $fixed_vhd = 1 Then
+		If $vhdfolder = "" Then
+			$entry_image_file= $vhdfile_name
+		Else
+			$entry_image_file= $vhdfolder & "/" & $vhdfile_name_only
+		EndIf
+
+		If $driver_flag = 3 Or $driver_flag = 0 Then
+			_GUICtrlStatusBar_SetText($hStatus," Making UEFI Grub4dos Menu on Target Boot Drive " & $TargetDrive, 0)
+			FileWriteLine($TargetDrive & "\EFI\grub\menu.lst", @CRLF & "title Boot  /" & $entry_image_file & " - UEFI Grub4dos  SVBus  RAMDISK  - " & $PSize)
+			FileWriteLine($TargetDrive & "\EFI\grub\menu.lst", "load /EFI/grub/ntfs_x64.efi")
+			FileWriteLine($TargetDrive & "\EFI\grub\menu.lst", "find --set-root --ignore-floppies --ignore-cd /" & $entry_image_file)
+			FileWriteLine($TargetDrive & "\EFI\grub\menu.lst", "map --mem --top /" & $entry_image_file & " (hd)")
+			FileWriteLine($TargetDrive & "\EFI\grub\menu.lst", "chainloader (hd-1)")
+		EndIf
+	EndIf
+
+	If StringRight($vhdfile_name, 4) = ".vhd" And FileExists($TargetDrive & "\grub\grub.cfg") And $Part12_flag = 1 And $fixed_vhd = 1 Then
+		If $vhdfolder = "" Then
+			$entry_image_file= $vhdfile_name
+		Else
+			$entry_image_file= $vhdfolder & "/" & $vhdfile_name_only
+		EndIf
+
+		If $driver_flag = 3 Or $driver_flag = 0 Then
+			_GUICtrlStatusBar_SetText($hStatus," Making UEFI Grub2 Menu on Target Boot Drive " & $TargetDrive, 0)
+			FileWriteLine($TargetDrive & "\grub\grub.cfg", @CRLF & "menuentry " & '"' & "Boot /" & $entry_image_file & " - UEFI Grub2  SVBus  RAMDISK  - " & $PSize & '"' & " {")
+			FileWriteLine($TargetDrive & "\grub\grub.cfg", "  efiload /EFI/grub/ntfs_x64.efi")
 			FileWriteLine($TargetDrive & "\grub\grub.cfg", "  search --file --set=vhd_drive --no-floppy /" & $entry_image_file)
 			FileWriteLine($TargetDrive & "\grub\grub.cfg", "  map --mem --rt ($vhd_drive)/" & $entry_image_file)
 			FileWriteLine($TargetDrive & "\grub\grub.cfg", "  boot")
@@ -3514,9 +3580,9 @@ Func _Make_Boot()
 			EndIf
 			Sleep(1000)
 		EndIf
-		; Rename NTFS folder EFI and Boot as x-EFI and x-Boot needed to prevent boot_image)handle Not found in booting UEFI Grub4dos
-		If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-EFI", 1)
-		If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-Boot", 1)
+		; Rename NTFS folder EFI and Boot as x-EFI and x-Boot needed to prevent boot_image)handle Not found in booting UEFI Grub4dos - better UnCompress with WofCompress
+		; If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-EFI", 1)
+		; If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-Boot", 1)
 	EndIf
 
 	; Reset Disable AutoPlay to Original value 0 = Enable AutoPlay
