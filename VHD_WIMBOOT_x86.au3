@@ -3,9 +3,9 @@
 
  AutoIt Version: 3.3.14.5 + put file SciTEUser.properties in your UserProfile e.g. C:\Users\User-10
 
- Author:        WIMB  -  December 28, 2020
+ Author:        WIMB  -  December 29, 2020
 
- Program:       VHD_WIMBOOT_x86.exe - Version 4.3 in rule 173
+ Program:       VHD_WIMBOOT_x86.exe - Version 4.4 in rule 173
 
  Script Function:
 
@@ -170,7 +170,7 @@ SystemFileRedirect("Off")
 $hGuiParent = GUICreate(" VHD_WIMBOOT x86 - APPLY WIM to VHD file - wimlib", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
-GUICtrlCreateGroup("System Files - Version 4.3  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 331)
+GUICtrlCreateGroup("System Files - Version 4.4  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 331)
 
 GUICtrlCreateLabel( "  WIM File", 32, 29)
 $WIM_Size_Label = GUICtrlCreateLabel( "", 130, 29, 60, 15, $ES_READONLY)
@@ -2104,10 +2104,6 @@ Func _APPLY_WIM_ToVHD()
 
 	GUICtrlSetData($ProgressAll, 50)
 
-	If $winload_flag <> 0 Then
-		_BCD_Inside_VHD()
-	EndIf
-
 	If $vhd_f32_drive <> "" And FileExists($vhd_f32_drive & "\nul") Then
 		If FileExists(@WindowsDir & "\system32\bcdboot.exe") Then
 			; in win8 x64 OS then Win8x64 bcdboot with option /f ALL must be used, otherwise entry is not made
@@ -2121,8 +2117,34 @@ Func _APPLY_WIM_ToVHD()
 			Sleep(1000)
 		EndIf
 		; Rename NTFS folder EFI and Boot as x-EFI and x-Boot needed to prevent boot_image)handle Not found in booting UEFI Grub4dos - better UnCompress with WofCompress
-		; If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-EFI", 1)
-		; If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-Boot", 1)
+		If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-EFI", 1)
+		If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-Boot", 1)
+	Else
+		_BCD_Inside_VHD()
+	EndIf
+
+	; UnCompress EFI folder inside VHD - needed for UEFI booting from RAMDISK of 1 Partition VHD - UEFI Grub2 and UEFI Grub4dos
+	If FileExists($tmpdrive & "\EFI") Then
+		_GUICtrlStatusBar_SetText($hStatus," WOF UnCompress of " & $tmpdrive & "\EFI" & " - wait .... ", 0)
+		Sleep(500)
+		If @OSArch = "X86" Then
+			$iPID = Run(@ComSpec & " /k WofCompress\x86\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\EFI" & '"', @ScriptDir, @SW_HIDE)
+		Else
+			$iPID = Run(@ComSpec & " /k WofCompress\x64\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\EFI" & '"', @ScriptDir, @SW_HIDE)
+		EndIf
+		ProcessWaitClose($iPID, 1)
+	EndIf
+
+	; UnCompress Boot folder inside VHD
+	If FileExists($tmpdrive & "\Boot") Then
+		_GUICtrlStatusBar_SetText($hStatus," WOF UnCompress of " & $tmpdrive & "\Boot" & " - wait .... ", 0)
+		Sleep(500)
+		If @OSArch = "X86" Then
+			$iPID = Run(@ComSpec & " /k WofCompress\x86\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\Boot" & '"', @ScriptDir, @SW_HIDE)
+		Else
+			$iPID = Run(@ComSpec & " /k WofCompress\x64\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\Boot" & '"', @ScriptDir, @SW_HIDE)
+		EndIf
+		ProcessWaitClose($iPID, 1)
 	EndIf
 
 	If $TargetDrive = "" Then
@@ -2847,30 +2869,6 @@ Func _BCD_Inside_VHD()
 
 	EndIf
 
-	; UnCompress EFI folder inside VHD - needed for UEFI booting from RAMDISK of 1 Partition VHD - UEFI Grub2 and UEFI Grub4dos
-	If FileExists($tmpdrive & "\EFI") Then
-		_GUICtrlStatusBar_SetText($hStatus," WOF UnCompress of " & $tmpdrive & "\EFI" & " - wait .... ", 0)
-		Sleep(500)
-		If @OSArch = "X86" Then
-			$iPID = Run(@ComSpec & " /k WofCompress\x86\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\EFI" & '"', @ScriptDir, @SW_HIDE)
-		Else
-			$iPID = Run(@ComSpec & " /k WofCompress\x64\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\EFI" & '"', @ScriptDir, @SW_HIDE)
-		EndIf
-		ProcessWaitClose($iPID, 1)
-	EndIf
-
-	; UnCompress Boot folder inside VHD
-	If FileExists($tmpdrive & "\Boot") Then
-		_GUICtrlStatusBar_SetText($hStatus," WOF UnCompress of " & $tmpdrive & "\Boot" & " - wait .... ", 0)
-		Sleep(500)
-		If @OSArch = "X86" Then
-			$iPID = Run(@ComSpec & " /k WofCompress\x86\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\Boot" & '"', @ScriptDir, @SW_HIDE)
-		Else
-			$iPID = Run(@ComSpec & " /k WofCompress\x64\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\Boot" & '"', @ScriptDir, @SW_HIDE)
-		EndIf
-		ProcessWaitClose($iPID, 1)
-	EndIf
-
 EndFunc ;==>  _BCD_Inside_VHD
 ;===================================================================================================
 Func _BCD_BootDrive_VHD_Entry()
@@ -3563,10 +3561,9 @@ Func _Make_Boot()
 
 	GUICtrlSetData($ProgressAll, 45)
 
-	If $winload_flag <> 0 Then
-		_BCD_Inside_VHD()
-		_Boot_Entries()
-	EndIf
+	; If $winload_flag <> 0 Then
+	_Boot_Entries()
+	; EndIf
 
 	If $vhd_f32_drive <> "" And FileExists($vhd_f32_drive & "\nul") Then
 		If FileExists(@WindowsDir & "\system32\bcdboot.exe") Then
@@ -3581,8 +3578,34 @@ Func _Make_Boot()
 			Sleep(1000)
 		EndIf
 		; Rename NTFS folder EFI and Boot as x-EFI and x-Boot needed to prevent boot_image)handle Not found in booting UEFI Grub4dos - better UnCompress with WofCompress
-		; If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-EFI", 1)
-		; If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-Boot", 1)
+		If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-EFI", 1)
+		If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-Boot", 1)
+	Else
+		_BCD_Inside_VHD()
+	EndIf
+
+	; UnCompress EFI folder inside VHD - needed for UEFI booting from RAMDISK of 1 Partition VHD - UEFI Grub2 and UEFI Grub4dos
+	If FileExists($tmpdrive & "\EFI") Then
+		_GUICtrlStatusBar_SetText($hStatus," WOF UnCompress of " & $tmpdrive & "\EFI" & " - wait .... ", 0)
+		Sleep(500)
+		If @OSArch = "X86" Then
+			$iPID = Run(@ComSpec & " /k WofCompress\x86\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\EFI" & '"', @ScriptDir, @SW_HIDE)
+		Else
+			$iPID = Run(@ComSpec & " /k WofCompress\x64\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\EFI" & '"', @ScriptDir, @SW_HIDE)
+		EndIf
+		ProcessWaitClose($iPID, 1)
+	EndIf
+
+	; UnCompress Boot folder inside VHD
+	If FileExists($tmpdrive & "\Boot") Then
+		_GUICtrlStatusBar_SetText($hStatus," WOF UnCompress of " & $tmpdrive & "\Boot" & " - wait .... ", 0)
+		Sleep(500)
+		If @OSArch = "X86" Then
+			$iPID = Run(@ComSpec & " /k WofCompress\x86\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\Boot" & '"', @ScriptDir, @SW_HIDE)
+		Else
+			$iPID = Run(@ComSpec & " /k WofCompress\x64\WofCompress.exe -u -path:" & '"' & $tmpdrive & "\Boot" & '"', @ScriptDir, @SW_HIDE)
+		EndIf
+		ProcessWaitClose($iPID, 1)
 	EndIf
 
 	; Reset Disable AutoPlay to Original value 0 = Enable AutoPlay
