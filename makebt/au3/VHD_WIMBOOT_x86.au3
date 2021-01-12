@@ -3,9 +3,9 @@
 
  AutoIt Version: 3.3.14.5 + put file SciTEUser.properties in your UserProfile e.g. C:\Users\User-10
 
- Author:        WIMB  -  December 29, 2020
+ Author:        WIMB  -  January 11, 2021
 
- Program:       VHD_WIMBOOT_x86.exe - Version 4.4 in rule 173
+ Program:       VHD_WIMBOOT_x86.exe - Version 4.8 in rule 173
 
  Script Function:
 
@@ -61,14 +61,14 @@ Opt("GuiOnEventMode", 1)
 Opt("TrayIconHide", 1)
 
 ; Declaration GUI variables
-Global $hGuiParent, $ProgressAll, $hStatus, $EXIT, $Combo_Apply_Mode, $Combo_Capture_Mode, $Part12
+Global $hGuiParent, $ProgressAll, $hStatus, $EXIT, $Combo_Apply_Mode, $Combo_Capture_Mode, $Part12, $grldrUpd
 Global $APPLY, $CAPTURE, $WIM_INFO, $VHD_INFO, $Update_WIMBOOT, $Make_Boot, $VHD_TYPE, $ComboSize, $wimlib_dism
 Global $WIM_FileSelect, $WIM_File, $WIM_Size_Label, $VHD_File, $VHD_FileSelect, $VHD_Size_Label, $Keep_Mounted, $Fix_USB
 Global $TargetSel, $Target, $TargetSize, $TargetFree,  $WinDrv, $WinDrvSel, $WinDrvSize, $WinDrvFree, $AddDrivers, $Allow_Unsigned
 ; Setting Other variables
 Global $wimfile="", $WIM_Size=0, $vhdfile="", $VHDSize=0, $wimfolder = "", $vhdfolder = "", $VHDSpaceAvail=0, $VHD_Overflow=0
 Global $TargetDrive="", $TargetSpaceAvail=0, $FSvar_TargetDrive="", $DriveType="Fixed", $Firmware = "UEFI", $PartStyle = "MBR"
-Global $WinDrvDrive="", $WinDrvSpaceAvail=0, $FSvar_WinDrvDrive="", $DriveSysType="Fixed", $WIM_Path = ""
+Global $WinDrvDrive="", $WinDrvSpaceAvail=0, $FSvar_WinDrvDrive="", $DriveSysType="Fixed", $WIM_Path = "", $g4d_default = 0
 
 Global $inst_disk="", $inst_part="", $sys_disk="", $sys_part="", $usbsys=0, $usbfix=0
 
@@ -170,7 +170,7 @@ SystemFileRedirect("Off")
 $hGuiParent = GUICreate(" VHD_WIMBOOT x86 - APPLY WIM to VHD file - wimlib", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
-GUICtrlCreateGroup("System Files - Version 4.4  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 331)
+GUICtrlCreateGroup("System Files - Version 4.8  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 331)
 
 GUICtrlCreateLabel( "  WIM File", 32, 29)
 $WIM_Size_Label = GUICtrlCreateLabel( "", 130, 29, 60, 15, $ES_READONLY)
@@ -237,7 +237,12 @@ GUICtrlSetOnEvent($TargetSel, "_target_drive")
 $TargetSize = GUICtrlCreateLabel( "", 253, 264, 100, 15, $ES_READONLY)
 $TargetFree = GUICtrlCreateLabel( "", 253, 281, 100, 15, $ES_READONLY)
 
-GUICtrlCreateLabel( "Target", 32, 294)
+; GUICtrlCreateLabel( "Target", 32, 294)
+$grldrUpd = GUICtrlCreateCheckbox("", 90, 292, 17, 17)
+GUICtrlSetTip($grldrUpd, " Forces Update Grub4dos grldr Version on Boot Drive " & @CRLF _
+& " Forces Update grldr.mbr for Grub4dos in Boot Manager Menu " & @CRLF _
+& " Forces Update a1ive UEFI Grub2 and UEFI Grub4dos ")
+GUICtrlCreateLabel( "Update G", 32, 294)
 
 GUICtrlCreateLabel( "System Drive ", 32, 315)
 $WinDrv = GUICtrlCreateInput("", 110, 312, 95, 20, $ES_READONLY)
@@ -272,7 +277,6 @@ EndIf
 $Part12 = GUICtrlCreateCombo("", 140, 205, 109, 24, $CBS_DROPDOWNLIST)
 GUICtrlSetTip($Part12, " MBR Or GPT  1 = NTFS Partition" & @CRLF _
 & " MBR Or GPT  2 = FAT32 + NTFS Partition " & @CRLF _
-& " 2 Partitions is needed for UEFI booting from RAMDISK " & @CRLF _
 & " Signed SVBus Driver needed for UEFI booting from RAMDISK " & @CRLF _
 & " MBR  2 Partitions is preferred and Most Compatible ")
 GUICtrlSetData($Part12,"MBR  1  Partition|MBR  2  Partitions|GPT   1  Partition|GPT   2  Partitions", "MBR  2  Partitions")
@@ -339,6 +343,7 @@ GUICtrlSetState($WIM_FileSelect, $GUI_DISABLE)
 GUICtrlSetState($VHD_FileSelect, $GUI_DISABLE)
 GUICtrlSetState($TargetSel, $GUI_DISABLE)
 GUICtrlSetState($WinDrvSel, $GUI_ENABLE + $GUI_FOCUS)
+GUICtrlSetState($grldrUpd, $GUI_UNCHECKED + $GUI_DISABLE)
 
 _Mount_EFI()
 
@@ -1518,7 +1523,7 @@ Func _WinDrv_drive()
 EndFunc   ;==> _WinDrv_drive
 ;===================================================================================================
 Func _APPLY_WIM_ToVHD()
-	Local $i=0, $d, $ikey
+	Local $i=0, $d, $ikey, $iPID, $Rand_NR = 100
 
 	Local $linesplit[20], $file, $line, $AutoPlay_Data=""
 
@@ -1636,6 +1641,17 @@ Func _APPLY_WIM_ToVHD()
 	If $vhdfile <> "" And FileExists($vhdfile) Then
 		_Mount_VHD()
 
+		If $vhd_f32_drive <> "" And FileExists($vhd_f32_drive & "\nul") And DriveGetFileSystem($vhd_f32_drive) <> "FAT32" Then
+			MsgBox(48, " WARNING - VHD Part 1 Not FAT32 ", " VHD Partition 1 must be FAT32 " & @CRLF & @CRLF _
+			& " VHD Part 1 FileSystem = " & DriveGetFileSystem($vhd_f32_drive) & @CRLF & @CRLF _
+			& " Please Format " & $vhd_f32_drive & "  with FAT32 ", 0)
+		EndIf
+		If $tmpdrive <> "" And FileExists($tmpdrive & "\nul") And DriveGetFileSystem($tmpdrive) <> "NTFS" Then
+			MsgBox(48, " WARNING - VHD Not NTFS ", " VHD Partition must be NTFS " & @CRLF & @CRLF _
+			& " VHD Partition FileSystem = " & DriveGetFileSystem($tmpdrive) & @CRLF & @CRLF _
+			& " Please Format " & $tmpdrive & "  with NTFS ", 0)
+		EndIf
+
 		; In case _Mount_VHD failure return
 		If $tmpdrive = "" Then
 			; Reset Disable AutoPlay to Original value 0 = Enable AutoPlay
@@ -1678,7 +1694,7 @@ Func _APPLY_WIM_ToVHD()
 		EndIf
 
 		If GUICtrlRead($VHD_TYPE) <> "VHD    FIXED" Or GUICtrlRead($Part12) <> "MBR  2  Partitions" Then
-			$ikey = MsgBox(48+4+256, " New VHD Settings Not most compatible ", " UEFI RAMDISK best use Fixed VHD MBR with 2 Partitions " & @CRLF & @CRLF & " Continue without changing VHD Settings ? ")
+			$ikey = MsgBox(48+4+256, " New VHD Settings Not most compatible ", " RAMDISK best use Fixed VHD MBR with 2 Partitions " & @CRLF & @CRLF & " Continue without changing VHD Settings ? ")
 			If $ikey = 6 Then
 			Else
 				SystemFileRedirect("Off")
@@ -2101,6 +2117,7 @@ Func _APPLY_WIM_ToVHD()
 		; MsgBox(48, "Info AutoPlay Enabled ", "  " & @CRLF & @CRLF & " Disable AutoPlay_Data = 0 ", 0)
 	EndIf
 
+	$Rand_NR = Random(100, 999, 1)
 
 	GUICtrlSetData($ProgressAll, 50)
 
@@ -2117,8 +2134,8 @@ Func _APPLY_WIM_ToVHD()
 			Sleep(1000)
 		EndIf
 		; Rename NTFS folder EFI and Boot as x-EFI and x-Boot needed to prevent boot_image)handle Not found in booting UEFI Grub4dos - better UnCompress with WofCompress
-		If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-EFI", 1)
-		If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-Boot", 1)
+		If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-" & $Rand_NR & "-EFI", 1)
+		If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-" & $Rand_NR & "-Boot", 1)
 	Else
 		_BCD_Inside_VHD()
 	EndIf
@@ -2755,13 +2772,13 @@ Func _Mount_VHD()
 		$Part12_flag = 2
 		If StringLeft($part_nr_1, 1) = "1" And StringLeft($part_nr_2, 1) = "2" Then
 			$vhd_f32_drive = $vhd_boot
-			If $vhd_drive <> "" And FileExists($vhd_drive & $WinFol) Then
+			If $vhd_drive <> "" Then
 				$tmpdrive = $vhd_drive
 			EndIf
 		; In case of reverse drive letter sequence
-		ElseIf StringLeft($part_nr_1, 1) = "2" And StringLeft($part_nr_2, 1) = "1"
+		ElseIf StringLeft($part_nr_1, 1) = "2" And StringLeft($part_nr_2, 1) = "1" Then
 			$vhd_f32_drive = $vhd_drive
-			If $vhd_boot <> "" And FileExists($vhd_boot & $WinFol) Then
+			If $vhd_boot <> "" Then
 				$tmpdrive = $vhd_boot
 			EndIf
 		Else
@@ -2771,7 +2788,7 @@ Func _Mount_VHD()
 		EndIf
 	ElseIf $vhd_found = 1 Then
 		$Part12_flag = 1
-		If $vhd_drive <> "" And FileExists($vhd_drive & $WinFol) Then
+		If $vhd_drive <> "" Then
 			$tmpdrive = $vhd_drive
 		EndIf
 		; MsgBox(0, "VHD Drive - OK",  " VHD Drive = " & $vhd_drive, 0)
@@ -2832,7 +2849,7 @@ EndFunc ;==>  _BCD_Inside_Entry
 ;===================================================================================================
 Func _BCD_Inside_VHD()
 
-	Local $val=0, $iPID
+	Local $val=0
 
 	If FileExists(@WindowsDir & "\system32\bcdboot.exe") And Not FileExists($tmpdrive & "\Boot\BCD") Then
 		; in win8 x64 OS then Win8x64 bcdboot with option /f ALL must be used, otherwise entry is not made
@@ -3052,6 +3069,36 @@ Func _Boot_Entries()
 
 	GUICtrlSetData($ProgressAll, 65)
 
+	; Update existing grldr and grldr.mbr - Set Grub4dos entry default
+	If GUICtrlRead($grldrUpd) = $GUI_CHECKED And $PartStyle = "MBR" Then
+		If $DriveType="Removable" Or $usbfix Then $g4d_default = 1
+		; If FileExists($TargetDrive & "\grldr") Then
+		; 	FileSetAttrib($TargetDrive & "\grldr", "-RSH")
+		; 	FileCopy($TargetDrive & "\grldr", $TargetDrive & "\grldr_old")
+		; EndIf
+		FileCopy(@ScriptDir & "\makebt\grldr", $TargetDrive & "\", 1)
+		FileCopy(@ScriptDir & "\makebt\grub.exe", $TargetDrive & "\", 1)
+		If FileExists($TargetDrive & "\grldr.mbr") Then FileCopy(@ScriptDir & "\makebt\grldr.mbr", $TargetDrive & "\", 1)
+		; No forced update of menu.lst
+		;	If FileExists($TargetDrive & "\menu.lst") Then
+		;		FileSetAttrib($TargetDrive & "\menu.lst", "-RSH")
+		;		FileCopy($TargetDrive & "\menu.lst", $TargetDrive & "\menu_old.lst")
+		;	EndIf
+		;	FileCopy(@ScriptDir & "\makebt\menu.lst", $TargetDrive & "\", 1)
+		;	FileCopy(@ScriptDir & "\makebt\menu_Linux.lst", $TargetDrive & "\", 1)
+		; If FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") And $ventoy=0 Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
+		If FileExists(@ScriptDir & "\UEFI_MAN\grub\core.img") Then FileCopy(@ScriptDir & "\UEFI_MAN\grub\core.img", $TargetDrive & "\grub", 1)
+	EndIf
+	; Force Update UEFI Grub2 and UEFI Grub4dos
+	If GUICtrlRead($grldrUpd) = $GUI_CHECKED Then
+		FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\grubx64_real.efi", $TargetDrive & "\EFI\Boot\", 9)
+		FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\grubia32_real.efi", $TargetDrive & "\EFI\Boot\", 9)
+		FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\bootx64_g4d.efi", $TargetDrive & "\EFI\Boot\", 9)
+		FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\bootia32_g4d.efi", $TargetDrive & "\EFI\Boot\", 9)
+		FileCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\ntfs_x64.efi", $TargetDrive & "\EFI\grub\ntfs_x64.efi", 9)
+		DirCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\tools", $TargetDrive & "\EFI\grub\tools", 1)
+	EndIf
+
 	If $PartStyle = "MBR" Then
 		If Not FileExists($TargetDrive & "\grldr") Then
 			FileCopy(@ScriptDir & "\makebt\grldr", $TargetDrive & "\", 1)
@@ -3082,6 +3129,10 @@ Func _Boot_Entries()
 		FileCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\ntfs_x64.efi", $TargetDrive & "\EFI\grub\ntfs_x64.efi", 9)
 	EndIf
 
+	If FileExists(@ScriptDir & "\UEFI_MAN\EFI\grub\tools") And Not FileExists($TargetDrive & "\EFI\grub\tools") Then
+		DirCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\tools", $TargetDrive & "\EFI\grub\tools", 1)
+	EndIf
+
 	; support UEFI Grub4dos
 	If Not FileExists($TargetDrive & "\EFI\grub\menu.lst") Then
 		FileCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\menu.lst", $TargetDrive & "\EFI\grub\menu.lst", 9)
@@ -3105,26 +3156,26 @@ Func _Boot_Entries()
 		If $driver_flag = 3 Or $driver_flag = 0 Then
 			If $DriveSysType="Removable" Or $usbsys Then
 				If $FSvar_WinDrvDrive="NTFS" Then
-					FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,0)/" & $entry_image_file & "] (hd0,0)/" & $entry_image_file & " - SVBus  FILEDISK - " & $PSize & " - map as (hd-1) for WIMBOOT")
+					FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,0)/" & $entry_image_file & "] (hd0,0)/" & $entry_image_file & " - SVBus  FILEDISK - " & $PSize & " - map as (hd-1)")
 					; FileWriteLine($TargetDrive & "\menu.lst", "find --set-root --ignore-floppies /" & $entry_image_file)
 					FileWriteLine($TargetDrive & "\menu.lst", "map (hd0,0)/" & $entry_image_file & " (hd-1)")
 					FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
 					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
 					FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
 				EndIf
-				FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,0)/" & $entry_image_file & "] (hd0,0)/" & $entry_image_file & " - SVBus  RAMDISK  - " & $PSize & " - map as (hd-1) for WIMBOOT")
+				FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,0)/" & $entry_image_file & "] (hd0,0)/" & $entry_image_file & " - SVBus  RAMDISK  - " & $PSize & " - map as (hd-1)")
 				FileWriteLine($TargetDrive & "\menu.lst", "map --top --mem (hd0,0)/" & $entry_image_file & " (hd-1)")
 				FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
 				FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
 				FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
 				If $FSvar_WinDrvDrive="NTFS" Then
-					FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,1)/" & $entry_image_file & "] (hd0,1)/" & $entry_image_file & " - SVBus  FILEDISK - " & $PSize & " - map as (hd-1) for WIMBOOT")
+					FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,1)/" & $entry_image_file & "] (hd0,1)/" & $entry_image_file & " - SVBus  FILEDISK - " & $PSize & " - map as (hd-1)")
 					FileWriteLine($TargetDrive & "\menu.lst", "map (hd0,1)/" & $entry_image_file & " (hd-1)")
 					FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
 					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
 					FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
 				EndIf
-				FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,1)/" & $entry_image_file & "] (hd0,1)/" & $entry_image_file & " - SVBus  RAMDISK  - " & $PSize & " - map as (hd-1) for WIMBOOT")
+				FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,1)/" & $entry_image_file & "] (hd0,1)/" & $entry_image_file & " - SVBus  RAMDISK  - " & $PSize & " - map as (hd-1)")
 				; FileWriteLine($TargetDrive & "\menu.lst", "find --set-root --ignore-floppies /" & $entry_image_file)
 				FileWriteLine($TargetDrive & "\menu.lst", "map --top --mem (hd0,1)/" & $entry_image_file & " (hd-1)")
 				FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
@@ -3132,14 +3183,14 @@ Func _Boot_Entries()
 				FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
 			Else
 				If $FSvar_WinDrvDrive="NTFS" Then
-					FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "title " & $entry_image_file & " - SVBus  FILEDISK - " & $PSize & " - map as (hd) for WIMBOOT")
+					FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "title " & $entry_image_file & " - SVBus  FILEDISK - " & $PSize & " - map as (hd)")
 					FileWriteLine($TargetDrive & "\menu.lst", "find --set-root --ignore-floppies /" & $entry_image_file)
 					FileWriteLine($TargetDrive & "\menu.lst", "map /" & $entry_image_file & " (hd)")
 					FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
 					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
 					FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
 				EndIf
-				FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "title " & $entry_image_file & " - SVBus  RAMDISK  - " & $PSize & " - map as (hd) for WIMBOOT")
+				FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "title " & $entry_image_file & " - SVBus  RAMDISK  - " & $PSize & " - map as (hd)")
 				FileWriteLine($TargetDrive & "\menu.lst", "find --set-root --ignore-floppies /" & $entry_image_file)
 				FileWriteLine($TargetDrive & "\menu.lst", "map --top --mem /" & $entry_image_file & " (hd)")
 				FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
@@ -3254,6 +3305,12 @@ Func _Boot_Entries()
 			FileWriteLine($TargetDrive & "\grub\grub.cfg", "  map --mem --rt ($vhd_drive)/" & $entry_image_file)
 			FileWriteLine($TargetDrive & "\grub\grub.cfg", "  boot")
 			FileWriteLine($TargetDrive & "\grub\grub.cfg", "}")
+
+			FileWriteLine($TargetDrive & "\grub\grub.cfg", @CRLF & "menuentry " & '"' & "Boot /" & $entry_image_file & " - UEFI Grub2 ntboot SVBus  RAMDISK  - " & $PSize & '"' & " {")
+			FileWriteLine($TargetDrive & "\grub\grub.cfg", "  search --file --set=vhd_drive --no-floppy /" & $entry_image_file)
+			FileWriteLine($TargetDrive & "\grub\grub.cfg", "  map --mem --rt ($vhd_drive)/" & $entry_image_file)
+			FileWriteLine($TargetDrive & "\grub\grub.cfg", "  ntboot --win --highest=no --efi=(vd0,1)/EFI/Microsoft/Boot/bootmgfw.efi --winload=\\Windows\\System32\\winload.efi (vd0,1)")
+			FileWriteLine($TargetDrive & "\grub\grub.cfg", "}")
 		EndIf
 	EndIf
 
@@ -3362,34 +3419,39 @@ Func _Boot_Entries()
 	EndIf
 
 	; Make Grub4dos entry in BootManager Menu
-	If FileExists(@WindowsDir & "\system32\bcdedit.exe") And FileExists($TargetDrive & "\Boot\BCD") And Not FileExists($TargetDrive & "\grldr.mbr") Then
+	If FileExists(@WindowsDir & "\system32\bcdedit.exe") And FileExists($TargetDrive & "\Boot\BCD") Then
 		; MsgBox(48, "Grub4dos Driver Info ", "  " & @CRLF & @CRLF & " Driver Flag = " & $driver_flag, 0)
 		$bcdedit = @WindowsDir & "\system32\bcdedit.exe"
-
-		FileCopy(@ScriptDir & "\makebt\grldr.mbr", $TargetDrive & "\", 1)
-		$store = $TargetDrive & "\Boot\BCD"
-		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
-		& $store & " /create /d " & '"' & "Grub4dos Menu" & '"' & " /application bootsector > makebt\bs_temp\bcd_g4d.txt", @ScriptDir, @SW_HIDE)
-		$file = FileOpen(@ScriptDir & "\makebt\bs_temp\bcd_g4d.txt", 0)
-		$line = FileReadLine($file)
-		FileClose($file)
-		$pos1 = StringInStr($line, "{")
-		$pos2 = StringInStr($line, "}")
-		If $pos2-$pos1=37 Then
-			$guid = StringMid($line, $pos1, $pos2-$pos1+1)
+		If Not FileExists($TargetDrive & "\grldr.mbr") Or GUICtrlRead($grldrUpd) = $GUI_CHECKED Then
+			FileCopy(@ScriptDir & "\makebt\grldr.mbr", $TargetDrive & "\", 1)
+			$store = $TargetDrive & "\Boot\BCD"
 			RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
-			& $store & " /set " & $guid & " device boot", $TargetDrive & "\", @SW_HIDE)
-			RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
-			& $store & " /set " & $guid & " path \grldr.mbr", $TargetDrive & "\", @SW_HIDE)
-			RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
-			& $store & " /displayorder " & $guid & " /addfirst", $TargetDrive & "\", @SW_HIDE)
+			& $store & " /create /d " & '"' & "Grub4dos Menu" & '"' & " /application bootsector > makebt\bs_temp\bcd_g4d.txt", @ScriptDir, @SW_HIDE)
+			$file = FileOpen(@ScriptDir & "\makebt\bs_temp\bcd_g4d.txt", 0)
+			$line = FileReadLine($file)
+			FileClose($file)
+			$pos1 = StringInStr($line, "{")
+			$pos2 = StringInStr($line, "}")
+			If $pos2-$pos1=37 Then
+				$guid = StringMid($line, $pos1, $pos2-$pos1+1)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+				& $store & " /set " & $guid & " device boot", $TargetDrive & "\", @SW_HIDE)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+				& $store & " /set " & $guid & " path \grldr.mbr", $TargetDrive & "\", @SW_HIDE)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+				& $store & " /displayorder " & $guid & " /addfirst", $TargetDrive & "\", @SW_HIDE)
+				If $g4d_default = 1 Then
+					RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+					& $store & " /default " & $guid, $TargetDrive & "\", @SW_HIDE)
+				EndIf
+			EndIf
 		EndIf
 	EndIf
 EndFunc ;==> _Boot_Entries
 ;===================================================================================================
 Func _Make_Boot()
 
-	Local $val=0, $linesplit[20], $file, $line, $AutoPlay_Data=""
+	Local $val=0, $linesplit[20], $file, $line, $AutoPlay_Data="", $iPID, $Rand_NR = 100
 
 	DisableMenus(1)
 
@@ -3564,6 +3626,7 @@ Func _Make_Boot()
 	; If $winload_flag <> 0 Then
 	_Boot_Entries()
 	; EndIf
+	$Rand_NR = Random(100, 999, 1)
 
 	If $vhd_f32_drive <> "" And FileExists($vhd_f32_drive & "\nul") Then
 		If FileExists(@WindowsDir & "\system32\bcdboot.exe") Then
@@ -3578,8 +3641,8 @@ Func _Make_Boot()
 			Sleep(1000)
 		EndIf
 		; Rename NTFS folder EFI and Boot as x-EFI and x-Boot needed to prevent boot_image)handle Not found in booting UEFI Grub4dos - better UnCompress with WofCompress
-		If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-EFI", 1)
-		If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-Boot", 1)
+		If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-" & $Rand_NR & "-EFI", 1)
+		If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-" & $Rand_NR & "-Boot", 1)
 	Else
 		_BCD_Inside_VHD()
 	EndIf
@@ -3743,13 +3806,25 @@ Func DisableMenus($endis)
 	Else
 		GUICtrlSetState($WIM_FileSelect, $endis)
 		GUICtrlSetState($WIM_File, $endis)
-		GUICtrlSetState($ComboSize, $endis)
-		GUICtrlSetState($VHD_TYPE, $endis)
-		GUICtrlSetState($Part12, $endis)
+		If $vhdfile <> "" And FileExists($vhdfile) Then
+			GUICtrlSetState($ComboSize, $GUI_DISABLE)
+			GUICtrlSetState($VHD_TYPE, $GUI_DISABLE)
+			GUICtrlSetState($Part12, $GUI_DISABLE)
+		Else
+			GUICtrlSetState($ComboSize, $endis)
+			GUICtrlSetState($VHD_TYPE, $endis)
+			GUICtrlSetState($Part12, $endis)
+		EndIf
 		GUICtrlSetState($VHD_FileSelect, $endis)
 		GUICtrlSetState($VHD_File, $endis)
 		GUICtrlSetState($TargetSel, $endis)
 		GUICtrlSetState($Target, $endis)
+	EndIf
+
+	If $TargetDrive = "" Then
+		GUICtrlSetState($grldrUpd, $GUI_UNCHECKED + $GUI_DISABLE)
+	Else
+		GUICtrlSetState($grldrUpd, $endis)
 	EndIf
 
 	GUICtrlSetState($Combo_Apply_Mode, $GUI_DISABLE)
