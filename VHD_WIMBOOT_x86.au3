@@ -5,7 +5,7 @@
 
  Author:        WIMB  -  January 11, 2021
 
- Program:       VHD_WIMBOOT_x86.exe - Version 4.8 in rule 173
+ Program:       VHD_WIMBOOT_x86.exe - Version 4.9 in rule 173
 
  Script Function:
 
@@ -170,7 +170,7 @@ SystemFileRedirect("Off")
 $hGuiParent = GUICreate(" VHD_WIMBOOT x86 - APPLY WIM to VHD file - wimlib", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
-GUICtrlCreateGroup("System Files - Version 4.8  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 331)
+GUICtrlCreateGroup("System Files - Version 4.9  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 331)
 
 GUICtrlCreateLabel( "  WIM File", 32, 29)
 $WIM_Size_Label = GUICtrlCreateLabel( "", 130, 29, 60, 15, $ES_READONLY)
