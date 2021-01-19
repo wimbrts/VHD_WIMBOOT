@@ -3,9 +3,9 @@
 
  AutoIt Version: 3.3.14.5 + put file SciTEUser.properties in your UserProfile e.g. C:\Users\User-10
 
- Author:        WIMB  -  January 11, 2021
+ Author:        WIMB  -  January 18, 2021
 
- Program:       VHD_WIMBOOT_x64.exe - Version 4.9 in rule 173
+ Program:       VHD_WIMBOOT_x64.exe - Version 5.0 in rule 173
 
  Script Function:
 
@@ -66,13 +66,13 @@ Global $APPLY, $CAPTURE, $WIM_INFO, $VHD_INFO, $Update_WIMBOOT, $Make_Boot, $VHD
 Global $WIM_FileSelect, $WIM_File, $WIM_Size_Label, $VHD_File, $VHD_FileSelect, $VHD_Size_Label, $Keep_Mounted, $Fix_USB
 Global $TargetSel, $Target, $TargetSize, $TargetFree,  $WinDrv, $WinDrvSel, $WinDrvSize, $WinDrvFree, $AddDrivers, $Allow_Unsigned
 ; Setting Other variables
-Global $wimfile="", $WIM_Size=0, $vhdfile="", $VHDSize=0, $wimfolder = "", $vhdfolder = "", $VHDSpaceAvail=0, $VHD_Overflow=0
+Global $wimfile="", $WIM_Size=0, $vhdfile="", $VHDSize=0, $wimfolder = "", $vhdfolder = "", $VHDSpaceAvail=0, $VHD_Overflow=0, $diskpart_error = 0
 Global $TargetDrive="", $TargetSpaceAvail=0, $FSvar_TargetDrive="", $DriveType="Fixed", $Firmware = "UEFI", $PartStyle = "MBR"
 Global $WinDrvDrive="", $WinDrvSpaceAvail=0, $FSvar_WinDrvDrive="", $DriveSysType="Fixed", $WIM_Path = "", $g4d_default = 0
 
-Global $inst_disk="", $inst_part="", $sys_disk="", $sys_part="", $usbsys=0, $usbfix=0
+Global $inst_disk="", $inst_part="", $sys_disk="", $sys_part="", $usbsys=0, $usbfix=0, $vhd_hid_efi = 0, $vhd_rev_layout = 0
 
-Global $driver_flag=0, $vhdmp=0, $SysWOW64=0, $WinFol="\Windows", $winload_flag=0, $PE_flag = 0, $w78_flag = 0, $x_wofadk = 0, $Part12_flag = 0, $mbr_gpt_vhd_flag = "mbr", $fixed_vhd = 1
+Global $driver_flag=0, $vhdmp=0, $SysWOW64=0, $WinFol="\Windows", $winload_flag=0, $PE_flag = 0, $w78_flag = 0, $x_wofadk = 0, $Part12_flag = 0, $mbr_gpt_vhd_flag = "MBR", $fixed_vhd = 1
 Global $bcdedit="", $winload = "winload.exe", $bcd_guid_outfile = "makebt\bs_temp\bcd_boot_vhd.txt", $store = "", $DistLang = "en-US", $WinLang = "en-US", $bcdboot_flag = 0
 Global $vhd_f32_drive = "", $tmpdrive = "", $PSize = "1.5 GB", $vhd_size="1500", $vhd_name = "W10x64_US_", $vhdfile_name ="W10x64_US_X.vhd", $vhdfile_name_only = ""
 
@@ -170,7 +170,7 @@ SystemFileRedirect("Off")
 $hGuiParent = GUICreate(" VHD_WIMBOOT x64 - APPLY WIM to VHD file - wimlib", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
-GUICtrlCreateGroup("System Files - Version 4.9  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 331)
+GUICtrlCreateGroup("System Files - Version 5.0  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 331)
 
 GUICtrlCreateLabel( "  WIM File", 32, 29)
 $WIM_Size_Label = GUICtrlCreateLabel( "", 130, 29, 60, 15, $ES_READONLY)
@@ -511,8 +511,16 @@ Func _Update_WIMBOOT()
 
 		; In case _Mount_VHD failure return
 		If $tmpdrive = "" Then
+			If $diskpart_error = 1 Then
+				MsgBox(48, " STOP - VHD Drive Not Found - DiskPart Error ", " DiskPart Cannot Attach VHD " & @CRLF & @CRLF & " Please Unmount VHD Drive of " & $vhdfile, 0)
+			Else
+				MsgBox(48, " STOP - VHD Drive Not Found - Invalid FileSystem ", " VHD must have NTFS Or FAT32 + NTFS FileSystem " & @CRLF & @CRLF & " Format Partitions of VHD " & $vhdfile, 0)
+				$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
+				If $val <> 0 Then
+					MsgBox(48, " Error DiskPart", " Detach VHD - DiskPart Error = " & $val, 0)
+				EndIf
+			EndIf
 			SystemFileRedirect("Off")
-			MsgBox(48, " STOP - VHD Drive Not Found", " Attach / Detach VHD - DiskPart Error " & @CRLF & @CRLF & "Please Unmount VHD Drive of " & $vhdfile, 0)
 			GUICtrlSetData($ProgressAll, 0)
 			_GUICtrlStatusBar_SetText($hStatus," Select Exit Or Select VHD ", 0)
 			DisableMenus(0)
@@ -666,8 +674,16 @@ Func _VHD_INFO()
 				RunWait(@ComSpec & " /c reg add HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers /v DisableAutoplay /t REG_DWORD /d 0 /f", @ScriptDir, @SW_HIDE)
 				; MsgBox(48, "Info AutoPlay Enabled ", "  " & @CRLF & @CRLF & " Disable AutoPlay_Data = 0 ", 0)
 			EndIf
+			If $diskpart_error = 1 Then
+				MsgBox(48, " STOP - VHD Drive Not Found - DiskPart Error ", " DiskPart Cannot Attach VHD " & @CRLF & @CRLF & " Please Unmount VHD Drive of " & $vhdfile, 0)
+			Else
+				MsgBox(48, " STOP - VHD Drive Not Found - Invalid FileSystem ", " VHD must have NTFS Or FAT32 + NTFS FileSystem " & @CRLF & @CRLF & " Format Partitions of VHD " & $vhdfile, 0)
+				$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
+				If $val <> 0 Then
+					MsgBox(48, " Error DiskPart", " Detach Dest VHD - DiskPart Error = " & $val, 0)
+				EndIf
+			EndIf
 			SystemFileRedirect("Off")
-			MsgBox(48, " STOP - VHD Drive Not Found", " Attach / Detach VHD - DiskPart Error " & @CRLF & @CRLF & "Please Unmount VHD Drive of " & $vhdfile, 0)
 			DisableMenus(0)
 			If $wimfile <> "" Then
 				_GUICtrlStatusBar_SetText($hStatus," Select APPLY of WIM File to VHD Or Upd WimBoot", 0)
@@ -693,7 +709,7 @@ Func _VHD_INFO()
 		_GUICtrlStatusBar_SetText($hStatus," Detach VHD " & $vhdfile_name, 0)
 		$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
 		If $val <> 0 Then
-			MsgBox(48, " Error DiskPart", " Detach Dest VHD - DiskPart Error = " & $val, 0)
+			MsgBox(48, " Error DiskPart", " Detach VHD - DiskPart Error = " & $val, 0)
 		EndIf
 
 		SystemFileRedirect("Off")
@@ -1542,6 +1558,8 @@ Func _APPLY_WIM_ToVHD()
 		Return
 	EndIf
 
+	$vhd_hid_efi = 0
+
 	If $vhdfile <> "" And FileExists($vhdfile) Then
 		$vhd_size = $VHDSize
 	Else
@@ -1642,12 +1660,12 @@ Func _APPLY_WIM_ToVHD()
 		_Mount_VHD()
 
 		If $vhd_f32_drive <> "" And FileExists($vhd_f32_drive & "\nul") And DriveGetFileSystem($vhd_f32_drive) <> "FAT32" Then
-			MsgBox(48, " WARNING - VHD Part 1 Not FAT32 ", " VHD Partition 1 must be FAT32 " & @CRLF & @CRLF _
-			& " VHD Part 1 FileSystem = " & DriveGetFileSystem($vhd_f32_drive) & @CRLF & @CRLF _
+			MsgBox(48, " WARNING - VHD Boot Partition Not FAT32 ", " VHD Boot Partition must be FAT32 " & @CRLF & @CRLF _
+			& " VHD Boot Partition FileSystem = " & DriveGetFileSystem($vhd_f32_drive) & @CRLF & @CRLF _
 			& " Please Format " & $vhd_f32_drive & "  with FAT32 ", 0)
 		EndIf
 		If $tmpdrive <> "" And FileExists($tmpdrive & "\nul") And DriveGetFileSystem($tmpdrive) <> "NTFS" Then
-			MsgBox(48, " WARNING - VHD Not NTFS ", " VHD Partition must be NTFS " & @CRLF & @CRLF _
+			MsgBox(48, " WARNING - VHD Partition Not NTFS ", " VHD Partition must be NTFS " & @CRLF & @CRLF _
 			& " VHD Partition FileSystem = " & DriveGetFileSystem($tmpdrive) & @CRLF & @CRLF _
 			& " Please Format " & $tmpdrive & "  with NTFS ", 0)
 		EndIf
@@ -1659,8 +1677,16 @@ Func _APPLY_WIM_ToVHD()
 				RunWait(@ComSpec & " /c reg add HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers /v DisableAutoplay /t REG_DWORD /d 0 /f", @ScriptDir, @SW_HIDE)
 				; MsgBox(48, "Info AutoPlay Enabled ", "  " & @CRLF & @CRLF & " Disable AutoPlay_Data = 0 ", 0)
 			EndIf
+			If $diskpart_error = 1 Then
+				MsgBox(48, " STOP - VHD Drive Not Found - DiskPart Error ", " DiskPart Cannot Attach VHD " & @CRLF & @CRLF & " Please Unmount VHD Drive of " & $vhdfile, 0)
+			Else
+				MsgBox(48, " STOP - VHD Drive Not Found - Invalid FileSystem ", " VHD must have NTFS Or FAT32 + NTFS FileSystem " & @CRLF & @CRLF & " Format Partitions of VHD " & $vhdfile, 0)
+				$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
+				If $val <> 0 Then
+					MsgBox(48, " Error DiskPart", " Detach Dest VHD - DiskPart Error = " & $val, 0)
+				EndIf
+			EndIf
 			SystemFileRedirect("Off")
-			MsgBox(48, " STOP - VHD Drive Not Found", " Attach / Detach VHD - DiskPart Error " & @CRLF & @CRLF & "Please Unmount VHD Drive of " & $vhdfile, 0)
 			GUICtrlSetData($ProgressAll, 0)
 			_GUICtrlStatusBar_SetText($hStatus," Select WIM File for APPLY Or Select Exit ", 0)
 			DisableMenus(0)
@@ -1852,9 +1878,9 @@ Func _APPLY_WIM_ToVHD()
 		GUICtrlSetData($ProgressAll, 20)
 
 		If GUICtrlRead($Part12) = "MBR  1  Partition" Or GUICtrlRead($Part12) = "MBR  2  Partitions" Then
-			$mbr_gpt_vhd_flag = "mbr"
+			$mbr_gpt_vhd_flag = "MBR"
 		Else
-			$mbr_gpt_vhd_flag = "gpt"
+			$mbr_gpt_vhd_flag = "GPT"
 		EndIf
 
 		If GUICtrlRead($VHD_TYPE) = "VHD    FIXED" Then $fixed_vhd = 1
@@ -2137,7 +2163,14 @@ Func _APPLY_WIM_ToVHD()
 		If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-" & $Rand_NR & "-EFI", 1)
 		If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-" & $Rand_NR & "-Boot", 1)
 	Else
-		_BCD_Inside_VHD()
+		If $vhd_hid_efi = 0 Then
+			_BCD_Inside_VHD()
+		Else
+			; 2 partition VHD with Hidden EFI partition - type GPT - UEFI WinNTSetup
+			; Rename NTFS folder EFI and Boot as x-EFI and x-Boot needed to prevent boot_image_handle Not found in booting UEFI Grub4dos
+			If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-" & $Rand_NR & "-EFI", 1)
+			If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-" & $Rand_NR & "-Boot", 1)
+		EndIf
 	EndIf
 
 	; UnCompress EFI folder inside VHD - needed for UEFI booting from RAMDISK of 1 Partition VHD - UEFI Grub2 and UEFI Grub4dos
@@ -2431,8 +2464,16 @@ Func _CAPTURE_VHD_ToWIM()
 			RunWait(@ComSpec & " /c reg add HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers /v DisableAutoplay /t REG_DWORD /d 0 /f", @ScriptDir, @SW_HIDE)
 			; MsgBox(48, "Info AutoPlay Enabled ", "  " & @CRLF & @CRLF & " Disable AutoPlay_Data = 0 ", 0)
 		EndIf
+		If $diskpart_error = 1 Then
+			MsgBox(48, " STOP - VHD Drive Not Found - DiskPart Error ", " DiskPart Cannot Attach VHD " & @CRLF & @CRLF & " Please Unmount VHD Drive of " & $vhdfile, 0)
+		Else
+			MsgBox(48, " STOP - VHD Drive Not Found - Invalid FileSystem ", " VHD must have NTFS Or FAT32 + NTFS FileSystem " & @CRLF & @CRLF & " Format Partitions of VHD " & $vhdfile, 0)
+			$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
+			If $val <> 0 Then
+				MsgBox(48, " Error DiskPart", " Detach VHD - DiskPart Error = " & $val, 0)
+			EndIf
+		EndIf
 		SystemFileRedirect("Off")
-		MsgBox(48, " STOP - VHD Drive Not Found", " Attach / Detach VHD - DiskPart Error " & @CRLF & @CRLF & "Please Unmount VHD Drive of " & $vhdfile, 0)
 		_GUICtrlStatusBar_SetText($hStatus," Select Exit Or Select CAPTURE ", 0)
 		GUICtrlSetData($ProgressAll, 0)
 		DisableMenus(0)
@@ -2626,12 +2667,15 @@ Func _CAPTURE_VHD_ToWIM()
 EndFunc   ;==> _CAPTURE_VHD_ToWIM
 ;===================================================================================================
 Func _Mount_VHD()
-	Local $val=0, $vhd_found=0, $vhd_drive="", $any_drive="", $vhd_mp=0
+	Local $val=0, $vhd_found=0, $vhd_win="", $any_drive="", $vhd_mp=0, $vhd_efi = 0, $dev_nr_efi = ""
 	Local $linesplit[20], $file, $line, $count = 0, $i, $d
-	Local $NoVirtDrives, $FixedDrives, $vhd_boot = "", $dev_nr_1 = "", $dev_nr_2 = "", $part_nr_1 = "", $part_nr_2 = ""
+	Local $NoVirtDrives, $FixedDrives, $vhd_boot = "", $dev_nr_1 = "", $dev_nr_2 = "", $part_nr_1 = "", $part_nr_2 = "", $FSvar_1 = "", $FSvar_2 = ""
 
 	$tmpdrive = ""
 	$vhd_f32_drive = ""
+	$diskpart_error = 0
+	$vhd_hid_efi = 0
+	$vhd_rev_layout = 0
 
 	If FileExists(@ScriptDir & "\makebt\vhd_temp\attach_vhd.txt") Then FileDelete(@ScriptDir & "\makebt\vhd_temp\attach_vhd.txt")
 	If FileExists(@ScriptDir & "\makebt\vhd_temp\make_vhd.txt") Then FileDelete(@ScriptDir & "\makebt\vhd_temp\make_vhd.txt")
@@ -2652,6 +2696,7 @@ Func _Mount_VHD()
 
 	$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\attach_vhd.txt", @ScriptDir, @SW_HIDE)
 	If $val <> 0 Then
+		$diskpart_error = 1
 		; MsgBox(48, " STOP - Error DiskPart", " Attach VHD - DiskPart Error = " & $val & @CRLF & @CRLF & "Please Unmount VHD Drive of " & $vhdfile, 0)
 		Return
 ;~ 		sleep(3000)
@@ -2698,9 +2743,10 @@ Func _Mount_VHD()
 	If $file <> -1 Then
 		$count = 0
 		$vhd_mp = 0
+		$vhd_efi = 0
 		$any_drive = ""
 		$vhd_found = 0
-		$vhd_drive = ""
+		$vhd_win = ""
 		While 1
 			$line = FileReadLine($file)
 			If @error = -1 Then ExitLoop
@@ -2731,9 +2777,18 @@ Func _Mount_VHD()
 						$part_nr_2 = $linesplit[2]
 					EndIf
 				EndIf
+				If $vhd_efi = 1 And $linesplit[1] = "Device Number" And $linesplit[0] = 2 Then
+					$linesplit[2] = StringStripWS($linesplit[2], 3)
+					$dev_nr_efi = $linesplit[2]
+				EndIf
 
 				If $linesplit[1] = "Bus Type" And $linesplit[0] = 2 Then
 					$linesplit[2] = StringStripWS($linesplit[2], 3)
+					If $linesplit[2] = "BusType15" And $any_drive = "none" Then
+						$vhd_efi = 1
+					Else
+						$vhd_efi = 0
+					EndIf
 					If $linesplit[2] = "BusType15" And StringLen($any_drive) = 3 Then
 						For $i = 1 to $FixedDrives[0]
 							For $d = 1 to $NoVirtDrives[0]
@@ -2746,13 +2801,13 @@ Func _Mount_VHD()
 								$vhd_mp = 1
 								If $vhd_found = 1 Then
 									$vhd_boot = StringLeft($any_drive, 2)
-									$vhd_drive = StringLeft($any_drive, 2)
+									$vhd_win = StringLeft($any_drive, 2)
 								EndIf
 								If $vhd_found = 2 Then
-									$vhd_drive = StringLeft($any_drive, 2)
+									$vhd_win = StringLeft($any_drive, 2)
 								EndIf
 								; MsgBox(0, "VHD Drive Found", " VHD Drive " & $vhd_found & " = " & $vhd_boot & @CRLF & @CRLF _
-								; & " VHD Drive " & $vhd_found & " = " & $vhd_drive & @CRLF & @CRLF & " ", 0)
+								; & " VHD Drive " & $vhd_found & " = " & $vhd_win & @CRLF & @CRLF & " ", 0)
 								ExitLoop
 							EndIf
 						Next
@@ -2763,40 +2818,101 @@ Func _Mount_VHD()
 		FileClose($file)
 	EndIf
 
-	;	MsgBox(0, "VHD Drive Found", " VHD Partitions = " & $vhd_found & @CRLF & @CRLF _
-	;	& " VHD 1 Boot = " & $vhd_boot & "  Device = " & $dev_nr_1 & "  Partition = " & $part_nr_1 & @CRLF & @CRLF _
-	;	& " VHD 2 Win  = " & $vhd_drive & "  Device = " & $dev_nr_2 & "  Partition = " & $part_nr_2, 0)
+	; MsgBox(0, "VHD Drive Found", " VHD Partitions = " & $vhd_found & @CRLF & @CRLF _
+	; & " VHD 1 = " & $vhd_boot & "  Device = " & $dev_nr_1 & "  Partition = " & StringLeft($part_nr_1, 1) & @CRLF & @CRLF _
+	; & " VHD 2 = " & $vhd_win & "  Device = " & $dev_nr_2 & "  Partition = " & StringLeft($part_nr_2, 1), 0)
 
 	; In case of 2 partitions found on same VHD Device Number
 	If $vhd_found = 2 And $dev_nr_1 = $dev_nr_2 Then
 		$Part12_flag = 2
 		If StringLeft($part_nr_1, 1) = "1" And StringLeft($part_nr_2, 1) = "2" Then
-			$vhd_f32_drive = $vhd_boot
-			If $vhd_drive <> "" Then
-				$tmpdrive = $vhd_drive
+			$FSvar_1 = DriveGetFileSystem($vhd_boot)
+			$FSvar_2 = DriveGetFileSystem($vhd_win)
+			If $FSvar_1 = "FAT32" And $FSvar_2 = "NTFS" Then
+				$vhd_f32_drive = $vhd_boot
+				$tmpdrive = $vhd_win
+			ElseIf $FSvar_1 = "NTFS" And $FSvar_2 = "FAT32" Then
+				$vhd_f32_drive = $vhd_win
+				$tmpdrive = $vhd_boot
+				$vhd_rev_layout = 1
+			Else
+				$tmpdrive = ""
+				; should not occur
+				; MsgBox(0, "VHD Drive - NOT OK",  " VHD Drive = " & $vhd_win, 0)
 			EndIf
 		; In case of reverse drive letter sequence
 		ElseIf StringLeft($part_nr_1, 1) = "2" And StringLeft($part_nr_2, 1) = "1" Then
-			$vhd_f32_drive = $vhd_drive
-			If $vhd_boot <> "" Then
+			$FSvar_1 = DriveGetFileSystem($vhd_win)
+			$FSvar_2 = DriveGetFileSystem($vhd_boot)
+			If $FSvar_1 = "FAT32" And $FSvar_2 = "NTFS" Then
+				$vhd_f32_drive = $vhd_win
 				$tmpdrive = $vhd_boot
+			ElseIf $FSvar_1 = "NTFS" And $FSvar_2 = "FAT32" Then
+				$vhd_f32_drive = $vhd_boot
+				$tmpdrive = $vhd_win
+				$vhd_rev_layout = 1
+			Else
+				$tmpdrive = ""
+				; should not occur
+				; MsgBox(0, "VHD Drive - NOT OK",  " VHD Drive = " & $vhd_win, 0)
+			EndIf
+		; case GPT MS Reserved = Part 1
+		ElseIf StringLeft($part_nr_1, 1) = "2" And StringLeft($part_nr_2, 1) = "3" Then
+			$FSvar_1 = DriveGetFileSystem($vhd_boot)
+			$FSvar_2 = DriveGetFileSystem($vhd_win)
+			If $FSvar_1 = "FAT32" And $FSvar_2 = "NTFS" Then
+				$vhd_f32_drive = $vhd_boot
+				$tmpdrive = $vhd_win
+			ElseIf $FSvar_1 = "NTFS" And $FSvar_2 = "FAT32" Then
+				$vhd_f32_drive = $vhd_win
+				$tmpdrive = $vhd_boot
+				$vhd_rev_layout = 1
+			Else
+				$tmpdrive = ""
+				; should not occur
+				; MsgBox(0, "VHD Drive - NOT OK",  " VHD Drive = " & $vhd_win, 0)
+			EndIf
+		; In case of reverse drive letter sequence
+		ElseIf StringLeft($part_nr_1, 1) = "3" And StringLeft($part_nr_2, 1) = "2" Then
+			$FSvar_1 = DriveGetFileSystem($vhd_win)
+			$FSvar_2 = DriveGetFileSystem($vhd_boot)
+			If $FSvar_1 = "FAT32" And $FSvar_2 = "NTFS" Then
+				$vhd_f32_drive = $vhd_win
+				$tmpdrive = $vhd_boot
+			ElseIf $FSvar_1 = "NTFS" And $FSvar_2 = "FAT32" Then
+				$vhd_f32_drive = $vhd_boot
+				$tmpdrive = $vhd_win
+				$vhd_rev_layout = 1
+			Else
+				$tmpdrive = ""
+				; should not occur
+				; MsgBox(0, "VHD Drive - NOT OK",  " VHD Drive = " & $vhd_win, 0)
 			EndIf
 		Else
 			$tmpdrive = ""
 			; should not occur
-			; MsgBox(0, "VHD Drive - NOT OK",  " VHD Drive = " & $vhd_drive, 0)
+			; MsgBox(0, "VHD Drive - NOT OK",  " VHD Drive = " & $vhd_win, 0)
 		EndIf
 	ElseIf $vhd_found = 1 Then
 		$Part12_flag = 1
-		If $vhd_drive <> "" Then
-			$tmpdrive = $vhd_drive
+		$FSvar_1 = DriveGetFileSystem($vhd_win)
+		If $vhd_win <> "" And $FSvar_1 = "NTFS" Then
+			$tmpdrive = $vhd_win
+			If $dev_nr_efi = $dev_nr_1 Then
+				$vhd_hid_efi = 1
+				; MsgBox(0, "VHD Drive - GPT UEFI",  " VHD Drive = " & $vhd_win & "   Device = " & $dev_nr_efi, 0)
+			EndIf
+		Else
+			$tmpdrive = ""
+			; should not occur
+			; MsgBox(0, "VHD Drive - NOT OK",  " VHD Drive = " & $vhd_win, 0)
 		EndIf
-		; MsgBox(0, "VHD Drive - OK",  " VHD Drive = " & $vhd_drive, 0)
+		; MsgBox(0, "VHD Drive - OK",  " VHD Drive = " & $vhd_win, 0)
 	Else
 		$Part12_flag = 0
 		$tmpdrive = ""
 		; should not occur
-		; MsgBox(0, "VHD Drive - NOT OK",  " VHD Drive = " & $vhd_drive, 0)
+		; MsgBox(0, "VHD Drive - NOT OK",  " VHD Drive = " & $vhd_win, 0)
 	EndIf
 
 EndFunc   ;==> _Mount_VHD
@@ -3144,8 +3260,11 @@ Func _Boot_Entries()
 		FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\bootia32_g4d.efi", $TargetDrive & "\EFI\Boot\", 9)
 	EndIf
 
-	; Grub4dos Menu entry in case of SVBus driver and VHD - Grub4dos does Not work with VHDX
-	If StringRight($vhdfile_name, 4) = ".vhd" And $PartStyle = "MBR" Then
+	; vhd has MBR or GPT ?
+	$mbr_gpt_vhd_flag = _GetDrivePartitionStyle(StringLeft($tmpdrive, 1))
+
+	; Grub4dos Menu entry in case of SVBus driver and VHD - Grub4dos does Not work with VHDX - Grub4dos needs MBR
+	If StringRight($vhdfile_name, 4) = ".vhd" And $PartStyle = "MBR" And $mbr_gpt_vhd_flag = "MBR" Then
 		_GUICtrlStatusBar_SetText($hStatus," Making Grub4dos Menu on Target Boot Drive " & $TargetDrive, 0)
 		If $vhdfolder = "" Then
 			$entry_image_file= $vhdfile_name
@@ -3160,26 +3279,42 @@ Func _Boot_Entries()
 					; FileWriteLine($TargetDrive & "\menu.lst", "find --set-root --ignore-floppies /" & $entry_image_file)
 					FileWriteLine($TargetDrive & "\menu.lst", "map (hd0,0)/" & $entry_image_file & " (hd-1)")
 					FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
-					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+					If $vhd_rev_layout = 0 Then
+						FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+					Else
+						FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,1)")
+					EndIf
 					FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
 				EndIf
 				FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,0)/" & $entry_image_file & "] (hd0,0)/" & $entry_image_file & " - SVBus  RAMDISK  - " & $PSize & " - map as (hd-1)")
 				FileWriteLine($TargetDrive & "\menu.lst", "map --top --mem (hd0,0)/" & $entry_image_file & " (hd-1)")
 				FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
-				FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+				If $vhd_rev_layout = 0 Then
+					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+				Else
+					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,1)")
+				EndIf
 				FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
 				If $FSvar_WinDrvDrive="NTFS" Then
 					FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,1)/" & $entry_image_file & "] (hd0,1)/" & $entry_image_file & " - SVBus  FILEDISK - " & $PSize & " - map as (hd-1)")
 					FileWriteLine($TargetDrive & "\menu.lst", "map (hd0,1)/" & $entry_image_file & " (hd-1)")
 					FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
-					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+					If $vhd_rev_layout = 0 Then
+						FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+					Else
+						FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,1)")
+					EndIf
 					FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
 				EndIf
 				FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "iftitle [if exist (hd0,1)/" & $entry_image_file & "] (hd0,1)/" & $entry_image_file & " - SVBus  RAMDISK  - " & $PSize & " - map as (hd-1)")
 				; FileWriteLine($TargetDrive & "\menu.lst", "find --set-root --ignore-floppies /" & $entry_image_file)
 				FileWriteLine($TargetDrive & "\menu.lst", "map --top --mem (hd0,1)/" & $entry_image_file & " (hd-1)")
 				FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
-				FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+				If $vhd_rev_layout = 0 Then
+					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+				Else
+					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,1)")
+				EndIf
 				FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
 			Else
 				If $FSvar_WinDrvDrive="NTFS" Then
@@ -3187,14 +3322,22 @@ Func _Boot_Entries()
 					FileWriteLine($TargetDrive & "\menu.lst", "find --set-root --ignore-floppies /" & $entry_image_file)
 					FileWriteLine($TargetDrive & "\menu.lst", "map /" & $entry_image_file & " (hd)")
 					FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
-					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+					If $vhd_rev_layout = 0 Then
+						FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+					Else
+						FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,1)")
+					EndIf
 					FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
 				EndIf
 				FileWriteLine($TargetDrive & "\menu.lst",@CRLF & "title " & $entry_image_file & " - SVBus  RAMDISK  - " & $PSize & " - map as (hd)")
 				FileWriteLine($TargetDrive & "\menu.lst", "find --set-root --ignore-floppies /" & $entry_image_file)
 				FileWriteLine($TargetDrive & "\menu.lst", "map --top --mem /" & $entry_image_file & " (hd)")
 				FileWriteLine($TargetDrive & "\menu.lst", "map --hook")
-				FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+				If $vhd_rev_layout = 0 Then
+					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,0)")
+				Else
+					FileWriteLine($TargetDrive & "\menu.lst", "root (hd-1,1)")
+				EndIf
 				FileWriteLine($TargetDrive & "\menu.lst", "chainloader /bootmgr")
 			EndIf
 		EndIf
@@ -3502,8 +3645,16 @@ Func _Make_Boot()
 			RunWait(@ComSpec & " /c reg add HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers /v DisableAutoplay /t REG_DWORD /d 0 /f", @ScriptDir, @SW_HIDE)
 			; MsgBox(48, "Info AutoPlay Enabled ", "  " & @CRLF & @CRLF & " Disable AutoPlay_Data = 0 ", 0)
 		EndIf
+		If $diskpart_error = 1 Then
+			MsgBox(48, " STOP - VHD Drive Not Found - DiskPart Error ", " DiskPart Cannot Attach VHD " & @CRLF & @CRLF & " Please Unmount VHD Drive of " & $vhdfile, 0)
+		Else
+			MsgBox(48, " STOP - VHD Drive Not Found - Invalid FileSystem ", " VHD must have NTFS Or FAT32 + NTFS FileSystem " & @CRLF & @CRLF & " Format Partitions of VHD " & $vhdfile, 0)
+			$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\diskpart.exe /s  makebt\vhd_temp\detach_vhd.txt", @ScriptDir, @SW_HIDE)
+			If $val <> 0 Then
+				MsgBox(48, " Error DiskPart", " Detach VHD - DiskPart Error = " & $val, 0)
+			EndIf
+		EndIf
 		SystemFileRedirect("Off")
-		MsgBox(48, " STOP - VHD Drive Not Found", " Attach / Detach VHD - DiskPart Error " & @CRLF & @CRLF & "Please Unmount VHD Drive of " & $vhdfile, 0)
 		GUICtrlSetData($ProgressAll, 0)
 		_GUICtrlStatusBar_SetText($hStatus," Select WIM File for APPLY Or Select Exit ", 0)
 		DisableMenus(0)
@@ -3640,11 +3791,18 @@ Func _Make_Boot()
 			EndIf
 			Sleep(1000)
 		EndIf
-		; Rename NTFS folder EFI and Boot as x-EFI and x-Boot needed to prevent boot_image)handle Not found in booting UEFI Grub4dos - better UnCompress with WofCompress
+		; Rename NTFS folder EFI and Boot as x-EFI and x-Boot needed to prevent boot_image_handle Not found in booting UEFI Grub4dos
 		If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-" & $Rand_NR & "-EFI", 1)
 		If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-" & $Rand_NR & "-Boot", 1)
 	Else
-		_BCD_Inside_VHD()
+		If $vhd_hid_efi = 0 Then
+			_BCD_Inside_VHD()
+		Else
+			; 2 partition VHD with Hidden EFI partition - type GPT - UEFI WinNTSetup
+			; Rename NTFS folder EFI and Boot as x-EFI and x-Boot needed to prevent boot_image_handle Not found in booting UEFI Grub4dos
+			If FileExists($tmpdrive & "\EFI") Then DirMove($tmpdrive & "\EFI", $tmpdrive & "\x-" & $Rand_NR & "-EFI", 1)
+			If FileExists($tmpdrive & "\Boot") Then DirMove($tmpdrive & "\Boot", $tmpdrive & "\x-" & $Rand_NR & "-Boot", 1)
+		EndIf
 	EndIf
 
 	; UnCompress EFI folder inside VHD - needed for UEFI booting from RAMDISK of 1 Partition VHD - UEFI Grub2 and UEFI Grub4dos
