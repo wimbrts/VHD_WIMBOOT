@@ -28,6 +28,9 @@ chainloader (0xff)
 iftitle [if exist (hd0,0)/grub/core.img] Grub2 Menu of a1ive - (hd0,0)/grub/core.img
 kernel /grub/core.img
 
+iftitle [if exist (hd0,0)/menu_distro.lst] Portable Linux Distro Menu - (hd0,0)/menu_distro.lst
+configfile /menu_distro.lst
+
 iftitle [ls (hd0,0)/images] Windows ISO Menu - (hd0,0)/images
 set iso_drive=(hd0,0)
 find --set-root /menu_Win_ISO.lst
@@ -62,3 +65,15 @@ reboot
 
 title Switch Off
 halt
+
+iftitle [if exist (hd0,1)/Ubuntu.vhd.vtoy] (hd0,1)/Ubuntu.vhd.vtoy - /grub/vdiskchain
+kernel /grub/ipxe.krn vdisk=/Ubuntu.vhd.vtoy
+initrd /grub/vdiskchain
+
+iftitle [if exist (hd0,1)/Ubuntu.vdi.vtoy] (hd0,1)/Ubuntu.vdi.vtoy - /grub/vdiskchain
+kernel /grub/ipxe.krn vdisk=/Ubuntu.vdi.vtoy
+initrd /grub/vdiskchain
+
+iftitle [if exist (hd0,1)/KALI.vdi.vtoy] (hd0,1)/KALI.vdi.vtoy - /grub/vdiskchain
+kernel /grub/ipxe.krn vdisk=/KALI.vdi.vtoy
+initrd /grub/vdiskchain
