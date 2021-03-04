@@ -1,0 +1,92 @@
+Windows Registry Editor Version 5.00
+
+; Disable AutoReboot
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\CrashControl]
+"AutoReboot"=dword:00000000
+
+; disable Prefetch
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters]
+"EnableSuperfetch"=dword:00000000
+"EnablePrefetcher"=dword:00000000
+
+; Windows 8 Disable sppsvc - No Activation
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sppsvc]
+"StartProtected"=dword:00000004
+"Start"=dword:00000004
+
+; Windows 8 Disable Hiberboot to prevent NTFS dirty bit in case of MultiBoot causing running of chkdsk
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Power]
+"HiberbootEnabled"=dword:00000000
+
+
+; Skip autorun of ChkDsk for drive C - K
+
+; [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager]
+; "BootExecute"=hex(7):61,00,75,00,74,00,6f,00,63,00,68,00,65,00,63,00,6b,00,20,\
+;   00,61,00,75,00,74,00,6f,00,63,00,68,00,6b,00,20,00,2f,00,6b,00,3a,00,43,00,\
+;   20,00,2f,00,6b,00,3a,00,44,00,20,00,2f,00,6b,00,3a,00,45,00,20,00,2f,00,6b,\
+;   00,3a,00,46,00,20,00,2f,00,6b,00,3a,00,47,00,20,00,2f,00,6b,00,3a,00,48,00,\
+;   20,00,2f,00,6b,00,3a,00,49,00,20,00,2f,00,6b,00,3a,00,4a,00,20,00,2f,00,6b,\
+;   00,3a,00,4b,00,20,00,2a,00,00,00,00,00
+
+; Enable USB Boot
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\usbccgp]
+"BootFlags"=dword:00000004
+"Start"=dword:00000000
+"Group"="Boot Bus Extender"
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\usbehci]
+"BootFlags"=dword:00000004
+"Start"=dword:00000000
+"Group"="Boot Bus Extender"
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\usbhub]
+"BootFlags"=dword:00000004
+"Start"=dword:00000000
+"Group"="Boot Bus Extender"
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\USBHUB3]
+"BootFlags"=dword:00000004
+"Start"=dword:00000000
+"Group"="Boot Bus Extender"
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\USBXHCI]
+"BootFlags"=dword:00000004
+"Start"=dword:00000000
+"Group"="Boot Bus Extender"
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\UCX01000]
+"BootFlags"=dword:00000004
+"Start"=dword:00000000
+"Group"="Boot Bus Extender"
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\iusb3adp]
+"BootFlags"=dword:00000004
+"Start"=dword:00000000
+"Group"="Boot Bus Extender"
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\UASPStor]
+"BootFlags"=dword:00000004
+"Start"=dword:00000000
+"Group"="Boot Bus Extender"
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\usbohci]
+"BootFlags"=dword:00000004
+"Start"=dword:00000000
+"Group"="Boot Bus Extender"
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\usbstor]
+"BootFlags"=dword:00000004
+"Start"=dword:00000000
+"Group"="Boot Bus Extender"
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\usbuhci]
+"BootFlags"=dword:00000004
+"Start"=dword:00000000
+"Group"="Boot Bus Extender"
+

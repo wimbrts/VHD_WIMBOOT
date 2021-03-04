@@ -1,0 +1,6 @@
+Windows Registry Editor Version 5.00
+
+; Search PStart Menu for Portable Apps
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run]
+"PStartMenu"="PS.exe"
