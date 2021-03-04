@@ -1,0 +1,27 @@
+[Disks]
+disk1="FiraDisk Installation Disk",\firadisk.inf,\
+
+[Defaults]
+SCSI=firadiskx86
+
+[SCSI]
+firadiskx86="FiraDisk Driver x86"
+firadiskx64="FiraDisk Driver x64"
+
+[Files.scsi.firadiskx86]
+driver=disk1,firadisk.sys,FiraDisk
+inf=disk1,firadisk.inf
+catalog=disk1,firadisk.cat
+
+[Files.scsi.firadiskx64]
+driver=disk1,firadi64.sys,FiraDisk
+inf=disk1,firadisk.inf
+catalog=disk1,firadi64.cat
+
+[HardwareIds.scsi.firadiskx86]
+id="detected\firadisk","FiraDisk"
+
+[HardwareIds.scsi.firadiskx64]
+id="detected\firadisk","FiraDisk"
+
+[Config.FiraDisk]
