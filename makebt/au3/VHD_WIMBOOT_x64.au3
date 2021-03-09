@@ -3,7 +3,7 @@
 
  AutoIt Version: 3.3.14.5 + put file SciTEUser.properties in your UserProfile e.g. C:\Users\User-10
 
- Author:        WIMB  -  February 22, 2021
+ Author:        WIMB  -  March 06, 2021
 
  Program:       VHD_WIMBOOT_x64.exe - Version 5.3 in rule 173
 
@@ -3553,16 +3553,27 @@ Func _Boot_Entries()
 		If Not FileExists($TargetDrive & "\grub\core.img") Then
 			FileCopy(@ScriptDir & "\UEFI_MAN\grub\core.img", $TargetDrive & "\grub\", 9)
 		EndIf
+		; Support vdiskchain for Linux in VHD
+		If Not FileExists($TargetDrive & "\grub\vdiskchain") Then
+			If FileExists(@ScriptDir & "\UEFI_MAN\grub\vdiskchain") Then FileCopy(@ScriptDir & "\UEFI_MAN\grub\vdiskchain", $TargetDrive & "\grub\", 9)
+		EndIf
+		If Not FileExists($TargetDrive & "\grub\ipxe.krn") Then
+			If FileExists(@ScriptDir & "\UEFI_MAN\grub\ipxe.krn") Then FileCopy(@ScriptDir & "\UEFI_MAN\grub\ipxe.krn", $TargetDrive & "\grub\", 9)
+		EndIf
 	EndIf
+
 	; support UEFI Grub2
 	If Not FileExists($TargetDrive & "\grub\grub.cfg") Then
 		FileCopy(@ScriptDir & "\UEFI_MAN\grub\grub.cfg", $TargetDrive & "\grub\", 9)
 		FileCopy(@ScriptDir & "\UEFI_MAN\grub\grub_Linux.cfg", $TargetDrive & "\grub\", 9)
 		FileCopy(@ScriptDir & "\UEFI_MAN\grub\grub_distro.cfg", $TargetDrive & "\grub\", 9)
 	EndIf
+
 	; support UEFI Grub4dos
-	If Not FileExists($TargetDrive & "\EFI\grub\menu.lst") Then
-		FileCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\menu.lst", $TargetDrive & "\EFI\grub\", 9)
+	If $DriveType="Removable" Or $usbfix Or $PartStyle = "GPT" Then
+		If Not FileExists($TargetDrive & "\EFI\grub\menu.lst") Then
+			FileCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\menu.lst", $TargetDrive & "\EFI\grub\menu.lst", 9)
+		EndIf
 	EndIf
 
 	; requires sufficient space - available on USB - May be Not on internal EFI drive
@@ -3589,14 +3600,6 @@ Func _Boot_Entries()
 		EndIf
 		If Not FileExists($TargetDrive & "\EFI\Boot\bootia32_g4d.efi") Then
 			FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\bootia32_g4d.efi", $TargetDrive & "\EFI\Boot\", 9)
-		EndIf
-
-		; Support vdiskchain for Linux in VHD
-		If Not FileExists($TargetDrive & "\grub\vdiskchain") Then
-			If FileExists(@ScriptDir & "\UEFI_MAN\grub\vdiskchain") Then FileCopy(@ScriptDir & "\UEFI_MAN\grub\vdiskchain", $TargetDrive & "\grub\", 9)
-		EndIf
-		If Not FileExists($TargetDrive & "\grub\ipxe.krn") Then
-			If FileExists(@ScriptDir & "\UEFI_MAN\grub\ipxe.krn") Then FileCopy(@ScriptDir & "\UEFI_MAN\grub\ipxe.krn", $TargetDrive & "\grub\", 9)
 		EndIf
 	EndIf
 
