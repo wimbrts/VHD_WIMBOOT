@@ -3,9 +3,9 @@
 
  AutoIt Version: 3.3.14.5 + put file SciTEUser.properties in your UserProfile e.g. C:\Users\User-10
 
- Author:        WIMB  -  March 06, 2021
+ Author:        WIMB  -  April 10, 2021
 
- Program:       VHD_WIMBOOT_x64.exe - Version 5.3 in rule 173
+ Program:       VHD_WIMBOOT_x64.exe - Version 5.4 in rule 174
 
  Script Function:
 
@@ -171,7 +171,7 @@ SystemFileRedirect("Off")
 $hGuiParent = GUICreate(" VHD_WIMBOOT x64 - APPLY WIM to VHD file - wimlib", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
-GUICtrlCreateGroup("System Files - Version 5.3  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 15, 10, 370, 331)
+GUICtrlCreateGroup("System Files - Version 5.4  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 15, 10, 370, 331)
 
 GUICtrlCreateLabel( "  WIM File", 32, 29)
 $WIM_Size_Label = GUICtrlCreateLabel( "", 130, 29, 60, 15, $ES_READONLY)
@@ -3152,10 +3152,10 @@ Func _BCD_Inside_VHD()
 		FileSetAttrib($tmpdrive & "\Boot", "-RSH", 1)
 		FileSetAttrib($tmpdrive & "\bootmgr", "-RSH")
 	EndIf
-	If FileExists(@WindowsDir & "\system32\bcdedit.exe") And FileExists($tmpdrive & "\efi\Microsoft\Boot\BCD") Then
+	If FileExists(@WindowsDir & "\system32\bcdedit.exe") And FileExists($tmpdrive & "\EFI\Microsoft\Boot\BCD") Then
 		_GUICtrlStatusBar_SetText($hStatus," Make Boot Manager entry Inside VHD", 0)
 		$bcdedit = @WindowsDir & "\system32\bcdedit.exe"
-		$store = $tmpdrive & "\efi\Microsoft\Boot\BCD"
+		$store = $tmpdrive & "\EFI\Microsoft\Boot\BCD"
 		$winload = "winload.efi"
 		$bcd_guid_outfile = "makebt\bs_temp\bcd_efi_vhd.txt"
 
@@ -3438,10 +3438,43 @@ Func _Boot_Entries()
 
 				$bcdboot_flag = 1
 			EndIf
+
+			If Not FileExists($TargetDrive & "\EFI\Microsoft\Boot\BCD") Then
+				DirCopy(@WindowsDir & "\Boot\EFI", $TargetDrive & "\EFI\Microsoft\Boot", 1)
+				DirCopy(@WindowsDir & "\Boot\Fonts", $TargetDrive & "\EFI\Microsoft\Boot\Fonts", 1)
+				DirCopy(@WindowsDir & "\Boot\Resources", $TargetDrive & "\EFI\Microsoft\Boot\Resources", 1)
+				If Not FileExists($TargetDrive & "\Boot\boot.sdi") And FileExists(@WindowsDir & "\Boot\DVD\EFI\boot.sdi") Then
+					FileCopy(@WindowsDir & "\Boot\DVD\EFI\boot.sdi", $TargetDrive & "\Boot\", 1)
+				EndIf
+				If FileExists(@WindowsDir & "\Boot\EFI\bootmgfw.efi") Then
+					FileCopy(@WindowsDir & "\Boot\EFI\bootmgfw.efi", $TargetDrive & "\EFI\Boot\", 9)
+					If @OSArch <> "X86" Then
+						FileMove($TargetDrive & "\EFI\Boot\bootmgfw.efi", $TargetDrive & "\EFI\Boot\bootx64.efi", 1)
+					Else
+						FileMove($TargetDrive & "\EFI\Boot\bootmgfw.efi", $TargetDrive & "\EFI\Boot\bootia32.efi", 1)
+					EndIf
+				EndIf
+
+				$store = $TargetDrive & "\EFI\Microsoft\Boot\BCD"
+				RunWait(@ComSpec & " /c " & $bcdedit & " /createstore " & $store, $TargetDrive & "\", @SW_HIDE)
+				sleep(1000)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /create {bootmgr}", $TargetDrive & "\", @SW_HIDE)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} description " & '"' & "UEFI Windows Boot Manager" & '"', $TargetDrive & "\", @SW_HIDE)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} device boot", $TargetDrive & "\", @SW_HIDE)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} inherit {globalsettings}", $TargetDrive & "\", @SW_HIDE)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} timeout 20", $TargetDrive & "\", @SW_HIDE)
+				RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} toolsdisplayorder {memdiag}", $TargetDrive & "\", @SW_HIDE)
+
+				_mem_boot_menu()
+
+				$bcdboot_flag = 1
+
+			EndIf
+
 		EndIf
 	EndIf
 
-	If FileExists(@WindowsDir & "\system32\bcdboot.exe") And Not FileExists($TargetDrive & "\efi\Microsoft\Boot\BCD") And $PartStyle = "GPT" Then
+	If FileExists(@WindowsDir & "\system32\bcdboot.exe") And Not FileExists($TargetDrive & "\EFI\Microsoft\Boot\BCD") And $PartStyle = "GPT" Then
 		$bcdboot_flag = 1
 		If $PE_flag = 1 Then
 			If @OSVersion = "WIN_10" Or @OSVersion = "WIN_81" Or @OSVersion = "WIN_8" And @OSArch <> "X86" Then
@@ -3477,10 +3510,10 @@ Func _Boot_Entries()
 		FileSetAttrib($TargetDrive & "\Boot", "-RSH", 1)
 		FileSetAttrib($TargetDrive & "\bootmgr", "-RSH")
 	EndIf
-	If FileExists(@WindowsDir & "\system32\bcdedit.exe") And FileExists($TargetDrive & "\efi\Microsoft\Boot\BCD") Then
+	If FileExists(@WindowsDir & "\system32\bcdedit.exe") And FileExists($TargetDrive & "\EFI\Microsoft\Boot\BCD") Then
 		_GUICtrlStatusBar_SetText($hStatus," Add VHD entry to BCD on Boot Drive " & $TargetDrive, 0)
 		$bcdedit = @WindowsDir & "\system32\bcdedit.exe"
-		$store = $TargetDrive & "\efi\Microsoft\Boot\BCD"
+		$store = $TargetDrive & "\EFI\Microsoft\Boot\BCD"
 		$winload = "winload.efi"
 		$bcd_guid_outfile = "makebt\bs_temp\bcd_efi_usb.txt"
 
@@ -3570,11 +3603,11 @@ Func _Boot_Entries()
 	EndIf
 
 	; support UEFI Grub4dos
-	If $DriveType="Removable" Or $usbfix Or $PartStyle = "GPT" Then
+	; If $DriveType="Removable" Or $usbfix Or $PartStyle = "GPT" Then
 		If Not FileExists($TargetDrive & "\EFI\grub\menu.lst") Then
 			FileCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\menu.lst", $TargetDrive & "\EFI\grub\menu.lst", 9)
 		EndIf
-	EndIf
+	; EndIf
 
 	; requires sufficient space - available on USB - May be Not on internal EFI drive
 	If $DriveType="Removable" Or $usbfix Then
